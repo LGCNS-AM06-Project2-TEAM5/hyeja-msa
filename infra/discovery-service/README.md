@@ -1,5 +1,7 @@
 # discovery-service
 
+담당: 이지원
+
 Eureka 서버입니다. 모든 서비스가 여기에 등록되고, Gateway와 Feign은 서비스 이름으로 서로를 찾습니다.
 
 - 포트: 8761

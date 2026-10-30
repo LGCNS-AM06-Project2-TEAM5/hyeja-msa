@@ -1,5 +1,7 @@
 # config-service
 
+담당: 이지원
+
 Spring Cloud Config Server입니다. 설정 파일은 별도 저장소 `hyeja-config`에서 읽습니다.
 
 - 포트: 8888

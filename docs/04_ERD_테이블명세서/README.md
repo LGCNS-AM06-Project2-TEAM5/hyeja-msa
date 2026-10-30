@@ -1,8 +1,15 @@
 # 04 ERD · 테이블 명세서
 
-서비스별 DB(hyeja_member, hyeja_policy, hyeja_favorite, hyeja_notification)의 ERD와 테이블 명세를 둡니다.
+| 서비스 | DB | 테이블 | 서비스 안에서 유지하는 FK |
+|---|---|---|---|
+| user | `user_db` | member, profile | profile → member |
+| policy | `policy_db` | policy, policy_region, region, term, card_news | policy_region → policy·region, card_news → policy |
+| engagement | `engagement_db` | favorite, notification, (정책 스냅샷) | 없음 (회원·정책은 ID 값만 저장) |
+| recommendation | 없음 | - | - |
 
 1차 ERD 대비 변경점
-- favorite, notification의 member·policy FK 제거 (ID만 저장)
-- favorite에 정책명·마감일 스냅샷 컬럼 추가
-- policy에 `analysis_status`, `raw_hash` 추가
+- 서비스 사이 FK 제거: profile → region, favorite → member·policy, notification → member·policy
+- engagement에 정책 스냅샷 읽기 모델 추가 (관심 목록 응답·키워드 검색·D-7 알림용)
+- 개발 환경은 MariaDB 하나에 논리 DB 3개, DB 계정은 서비스별로 분리
+
+1차 ERD·테이블 명세서 원본: [hyeja-backend/docs](https://github.com/LGCNS-AM06-Project2-TEAM5/hyeja-backend/tree/develop/docs)

@@ -1,0 +1,9 @@
+# 폴더별 담당자 (PR을 올리면 자동으로 리뷰어로 지정됩니다)
+/infra/                           @ljw2869
+/docker/                          @ljw2869
+/k8s/                             @ljw2869
+/services/user-service/           @kangtaee
+/services/policy-service/         @yejun05011 @jnnxeo
+/services/engagement-service/     @hand-soo
+/services/recommendation-service/ @JibeomRyu
+/docs/                            @jnnxeo

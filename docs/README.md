@@ -11,8 +11,8 @@
 | [05_테스트케이스](05_테스트케이스/) | 기능별 입력·기대 결과·P/F | |
 | [06_결과보고서](06_결과보고서/) | 발표 자료 (PPT, HTML이면 PDF·PPT 둘 다) | |
 | [07_기타](07_기타/) | 저장소 주소, 화면설계서, 시연 영상(5분) | |
-| [architecture](architecture/) | 서비스 구성도, 시스템 구성도, 배포 구성도 | |
-| [api](api/) | 서비스 간 내부 API(Feign), Kafka 이벤트 형식 | |
+| [architecture](architecture/) | 팀 MSA 설계서, 설계·코드 대조, 서비스·시스템 구성도 | 이지원 |
+| [api](api/) | 외부 API 29개 배치, 내부 API(Feign), Kafka 이벤트 형식 | 서비스별 담당 |
 | [meetings](meetings/) | 데일리 스크럼, 회의록, 강사님 미팅 기록 | |
 
 혜자 백엔드 문서(API 규칙, 도메인 모델, 시드 등)는 [hyeja-backend/docs](https://github.com/LGCNS-AM06-Project2-TEAM5/hyeja-backend/tree/main/docs)에 그대로 있습니다.
