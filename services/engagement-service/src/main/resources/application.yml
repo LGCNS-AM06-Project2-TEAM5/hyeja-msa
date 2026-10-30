@@ -5,7 +5,7 @@ spring:
   # Config Server(8888)에서 외부 설정을 불러옴
   # optional: 을 붙여 Config Server가 실행 중이 아니어도 애플리케이션이 기동되도록 설정
   config:
-    import: optional:configserver:http://localhost:8888
+    import: optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}
 
 server:
-  port: 0
+  port: ${SERVER_PORT:8083}

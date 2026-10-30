@@ -1,0 +1,45 @@
+name: Service Build
+
+on:
+  pull_request:
+    paths:
+      - 'services/**'
+      - '.github/workflows/service-build.yml'
+  push:
+    branches: [develop]
+    paths:
+      - 'services/**'
+      - '.github/workflows/service-build.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  service-build:
+    name: build (${{ matrix.service }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - user-service
+          - policy-service
+          - engagement-service
+          - recommendation-service
+    defaults:
+      run:
+        working-directory: services/${{ matrix.service }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+          cache-dependency-path: services/${{ matrix.service }}/**/*.gradle*
+      - name: Build and test
+        run: ./gradlew --no-daemon test bootJar

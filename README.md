@@ -57,7 +57,33 @@ hyeja-msa/
 
 ## 실행 방법
 
-서비스 골격이 만들어지면 채웁니다. 목표는 `docker compose up` 한 번으로 전체가 뜨는 것입니다.
+Java 17 이상이 필요합니다. 각 서비스는 자체 Gradle Wrapper로 독립적으로 빌드하고 실행합니다.
+
+Config Server·Eureka 없이 Health Check를 확인하려면 각 서비스 디렉터리에서 아래처럼 실행합니다. 네 서비스를 함께 띄울 때는 터미널을 나누고 서비스 디렉터리를 각각 선택합니다.
+
+```bash
+cd services/policy-service
+SPRING_CLOUD_CONFIG_ENABLED=false EUREKA_CLIENT_ENABLED=false ./gradlew bootRun
+```
+
+기본 포트는 위 표의 8081~8084입니다. `/health-check`는 `<서비스 이름> OK`를 반환합니다.
+
+```bash
+curl --fail http://localhost:8081/health-check
+curl --fail http://localhost:8082/health-check
+curl --fail http://localhost:8083/health-check
+curl --fail http://localhost:8084/health-check
+```
+
+Config Server·Eureka가 실행 중이면 별도 비활성화 없이 `./gradlew bootRun`을 사용합니다. 기본 Config Server 주소는 `http://localhost:8888`이며, 컨테이너에서는 `CONFIG_SERVER_URL=http://config-service:8888`처럼 지정합니다. `SERVER_PORT`로 각 서비스의 포트를 재정의할 수 있습니다. 환경변수는 실행할 프로세스에 직접 전달해야 하며 Gradle이 루트 `.env`를 자동으로 읽지는 않습니다.
+
+빌드·테스트도 각 서비스 디렉터리에서 실행합니다. 테스트는 Config Server·Eureka 연결을 끄고 임의 포트에서 실제 Health Check HTTP 응답을 검증합니다.
+
+```bash
+./gradlew --no-daemon test bootJar
+```
+
+서비스 변경 PR에서는 `Service Build` CI가 네 서비스를 각각 빌드·테스트합니다. Docker Compose 통합 실행은 아직 준비 중이며, 목표는 `docker compose up` 한 번으로 전체가 뜨는 것입니다.
 
 서비스 코드는 [hyeja-backend](https://github.com/LGCNS-AM06-Project2-TEAM5/hyeja-backend)에서 필요한 부분을 가져와 `services/` 아래로 옮깁니다. 서비스별로 옮길 코드는 각 서비스 README에 적어 두었습니다.
 
