@@ -2,7 +2,7 @@
 
 LG CNS AM INSPIRE CAMP 6기 · 미니프로젝트 2 · 5조 · 작성일 2026-10-30 · 강사님 미팅 답변 반영
 
-확인 기준: `Hyejabonjuui/backend` main `3e47bb1` · `Hyejabonjuui/frontend` main `ec635f9` · 지원님 실습 저장소 `ljw2869/msa` `af02b0e` · 수강생 안내 PDF와 강의 녹취
+확인 기준: 혜자 백엔드·프런트엔드 코드 · 지원님 실습 저장소 `ljw2869/msa` `af02b0e` · 수강생 안내 PDF와 강의 녹취
 
 ---
 

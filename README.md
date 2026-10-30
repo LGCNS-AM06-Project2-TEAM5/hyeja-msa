@@ -2,7 +2,7 @@
 
 청년 주거 정책 추천 서비스 「혜자」를 마이크로서비스 아키텍처로 전환하는 LG CNS AM INSPIRE CAMP 6기 미니프로젝트 2 · 5조 저장소입니다.
 
-- 1차 혜자 원본 사본(참고용, 수정 금지): [hyeja-backend](https://github.com/LGCNS-AM06-Project2-TEAM5/hyeja-backend) · [hyeja-frontend](https://github.com/LGCNS-AM06-Project2-TEAM5/hyeja-frontend) — 원본 [Hyejabonjuui](https://github.com/Hyejabonjuui) 저장소를 그대로 가져와 보관(archive)했습니다.
+- 혜자 코드: [hyeja-backend](https://github.com/LGCNS-AM06-Project2-TEAM5/hyeja-backend) (백엔드, 서비스 분리의 출발점) · [hyeja-frontend](https://github.com/LGCNS-AM06-Project2-TEAM5/hyeja-frontend) (프런트엔드)
 - 설정 저장소(Config Server용): [hyeja-config](https://github.com/LGCNS-AM06-Project2-TEAM5/hyeja-config)
 - 기간: 2026-10-30(금) ~ 2026-11-05(목), 산출물 제출 11-05 오전 9시
 
@@ -55,9 +55,9 @@ hyeja-msa/
 
 서비스 골격이 만들어지면 채웁니다. 목표는 `docker compose up` 한 번으로 전체가 뜨는 것입니다.
 
-서비스 코드는 [hyeja-backend](https://github.com/LGCNS-AM06-Project2-TEAM5/hyeja-backend)에서 필요한 부분을 복사해 `services/` 아래로 옮깁니다. hyeja-backend와 hyeja-frontend(1차 원본 사본)에는 커밋하지 않습니다.
+서비스 코드는 [hyeja-backend](https://github.com/LGCNS-AM06-Project2-TEAM5/hyeja-backend)에서 필요한 부분을 가져와 `services/` 아래로 옮깁니다.
 
-프런트는 [hyeja-frontend](https://github.com/LGCNS-AM06-Project2-TEAM5/hyeja-frontend)를 받아 로컬 `.env`에 `VITE_API_BASE_URL=http://localhost:8000`, `VITE_USE_MOCK=false`를 넣고 실행합니다. (`.env`는 커밋하지 않으므로 원본 사본은 그대로 유지됩니다.)
+프런트는 [hyeja-frontend](https://github.com/LGCNS-AM06-Project2-TEAM5/hyeja-frontend)에서 작업합니다. 로컬 `.env`에 `VITE_API_BASE_URL=http://localhost:8000`, `VITE_USE_MOCK=false`를 넣고 실행합니다.
 
 ## 팀 (5조)
 
@@ -68,5 +68,5 @@ hyeja-msa/
 | 김예준 | [@yejun05011](https://github.com/yejun05011) | |
 | 류지범 | [@JibeomRyu](https://github.com/JibeomRyu) | |
 | 손수연 | [@hand-soo](https://github.com/hand-soo) | |
-| 이지원 | [@ljw2869](https://github.com/ljw2869) | 1차 혜자 원작 |
+| 이지원 | [@ljw2869](https://github.com/ljw2869) | |
 | 홍준서 | [@jnnxeo](https://github.com/jnnxeo) | |

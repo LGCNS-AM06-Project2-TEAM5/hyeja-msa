@@ -15,4 +15,4 @@
 | [api](api/) | 서비스 간 내부 API(Feign), Kafka 이벤트 형식 | |
 | [meetings](meetings/) | 데일리 스크럼, 회의록, 강사님 미팅 기록 | |
 
-1차 혜자 문서(API 규칙, 도메인 모델, 시드 등)는 [hyeja-backend/docs](https://github.com/LGCNS-AM06-Project2-TEAM5/hyeja-backend/tree/main/docs)에 그대로 있습니다.
+혜자 백엔드 문서(API 규칙, 도메인 모델, 시드 등)는 [hyeja-backend/docs](https://github.com/LGCNS-AM06-Project2-TEAM5/hyeja-backend/tree/main/docs)에 그대로 있습니다.
