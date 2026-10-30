@@ -67,6 +67,6 @@ hyeja-msa/
 | 강태현 | | |
 | 김예준 | [@yejun05011](https://github.com/yejun05011) | |
 | 류지범 | [@JibeomRyu](https://github.com/JibeomRyu) | |
-| 손수연 | | |
+| 손수연 | [@hand-soo](https://github.com/hand-soo) | |
 | 이지원 | [@ljw2869](https://github.com/ljw2869) | 1차 혜자 원작 |
 | 홍준서 | [@jnnxeo](https://github.com/jnnxeo) | |
