@@ -13,6 +13,7 @@ Spring Cloud Config Server입니다. 설정 파일은 별도 저장소 `hyeja-co
 ## 로컬 실행
 
 Java 17과 GitHub에 연결 가능한 네트워크가 필요합니다.
+Eureka 등록을 확인하려면 Discovery Server(8761)를 먼저 실행합니다.
 저장소 루트에서 다음 명령을 실행합니다.
 
 ```powershell
@@ -20,13 +21,18 @@ cd infra/config-service
 .\gradlew.bat bootRun
 ```
 
-Eureka와 DB 없이 독립 실행됩니다. 시작할 때 공개 설정 저장소
+DB 없이 실행되며 Eureka Client로 `config-service`를 등록합니다.
+Eureka 주소는 `EUREKA_SERVER_URL` 환경변수로 변경할 수 있으며,
+기본값은 `http://localhost:8761/eureka/`입니다.
+Eureka가 실행되지 않으면 등록 재시도 로그가 발생할 수 있습니다.
+시작할 때 공개 설정 저장소
 `https://github.com/LGCNS-AM06-Project2-TEAM5/hyeja-config`의 `main` 브랜치를
 복제하므로 Git 연결에 실패하면 기동에 실패합니다.
 
 ## 확인
 
 - 서버 상태: http://localhost:8888/actuator/health
+- Eureka 등록: http://localhost:8761 (`CONFIG-SERVICE`가 `UP`인지 확인)
 - Gateway의 local 설정: http://localhost:8888/gateway-service/local
 - User의 local 설정: http://localhost:8888/user-service/local
 
