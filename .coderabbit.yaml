@@ -1,0 +1,52 @@
+# CodeRabbit 자동 코드 리뷰 설정
+# 리뷰 코멘트만 남기고, 코드·커밋·PR 설명은 직접 만들거나 고치지 않도록 생성 기능을 모두 끕니다.
+# (커밋 작성자·기여자는 팀원만 남긴다는 협업 규칙에 맞추기 위해서입니다.)
+
+language: ko-KR
+
+reviews:
+  profile: chill
+  request_changes_workflow: false
+  # 요약은 PR 설명이 아니라 리뷰 코멘트(walkthrough) 안에만 둡니다.
+  high_level_summary: false
+  high_level_summary_in_walkthrough: true
+  poem: false
+  in_progress_fortune: false
+  enable_prompt_for_ai_agents: false
+  collapse_walkthrough: true
+  sequence_diagrams: false
+  review_status: true
+  auto_review:
+    enabled: true
+    drafts: false
+    base_branches:
+      - develop
+      - main
+  finishing_touches:
+    docstrings:
+      enabled: false
+    unit_tests:
+      enabled: false
+    simplify:
+      enabled: false
+    autofix:
+      enabled: false
+    fix_ci:
+      enabled: false
+    resolve_merge_conflict:
+      enabled: false
+  path_instructions:
+    - path: "services/**/*.java"
+      instructions: |
+        Spring Boot 4.1 · Java 17 서비스입니다. 다른 서비스의 DB나 엔티티를 직접 참조하지 않는지,
+        서비스 간 호출이 docs/api/README.md의 내부 API(F1~F8)·Kafka 이벤트 계약과 맞는지 확인해 주세요.
+        기존 혜자(hyeja-backend) 외부 API의 경로·요청·응답 형식이 바뀌지 않았는지도 봐 주세요.
+    - path: "infra/**"
+      instructions: |
+        Eureka·Config·Gateway 설정입니다. 인증(JWT) 검증, 라우팅 경로, 비밀값이 코드에 직접 들어가지 않았는지 확인해 주세요.
+    - path: "docs/**"
+      instructions: |
+        문서는 정중한 ~습니다체로 씁니다. 코드·계약과 다른 내용이 없는지 확인해 주세요.
+
+chat:
+  auto_reply: true
