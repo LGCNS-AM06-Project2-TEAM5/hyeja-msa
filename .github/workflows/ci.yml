@@ -35,7 +35,7 @@ jobs:
           all=$(find services infra -mindepth 2 -maxdepth 2 -name build.gradle -exec dirname {} \; 2>/dev/null | sort)
           if [ "$EVENT" = "pull_request" ]; then
             changed=$(git diff --name-only "$BASE"...HEAD)
-            picked=$(for d in $all; do echo "$changed" | grep -q "^$d/" && echo "$d"; done)
+            picked=$(for d in $all; do if echo "$changed" | grep -q "^$d/"; then echo "$d"; fi; done)
           else
             picked=$all
           fi
