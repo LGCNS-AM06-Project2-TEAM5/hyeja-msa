@@ -8,6 +8,12 @@ spring:
     default: local
   config:
     import: "configserver:${CONFIG_SERVER_URL:http://localhost:8888}"
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      database: ${REDIS_DATABASE:0}
+      timeout: 2s
   cloud:
     gateway:
       server:
@@ -34,19 +40,8 @@ spring:
               uri: lb://engagement-service
               predicates:
                 - Path=/api/favorite/**,/api/notification/**
-          globalcors:
-            add-to-simple-url-handler-mapping: true
-            cors-configurations:
-              '[/**]':
-                allowed-origins:
-                  - http://localhost:5173
-                allowed-methods:
-                  - GET
-                  - POST
-                  - PUT
-                  - PATCH
-                  - DELETE
-                  - OPTIONS
-                allowed-headers: '*'
-
 # Eureka 주소는 Config Server의 공통 application.yml에서 가져옵니다.
+
+# User 서비스와 동일한 키 및 Redis 인스턴스/DB를 사용합니다.
+jwt:
+  secret: ${JWT_SECRET}
