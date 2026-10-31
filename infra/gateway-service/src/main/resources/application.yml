@@ -1,0 +1,52 @@
+server:
+  port: 8000
+
+spring:
+  application:
+    name: gateway-service
+  profiles:
+    default: local
+  config:
+    import: "configserver:${CONFIG_SERVER_URL:http://localhost:8888}"
+  cloud:
+    gateway:
+      server:
+        webflux:
+          routes:
+            - id: recommendation-service
+              order: 0
+              uri: lb://recommendation-service
+              predicates:
+                - Path=/api/policies/search
+                - Method=GET
+            - id: policy-service
+              order: 1
+              uri: lb://policy-service
+              predicates:
+                - Path=/api/policies/**,/api/regions,/api/terms/**
+            - id: user-service
+              order: 2
+              uri: lb://user-service
+              predicates:
+                - Path=/api/members/**
+            - id: engagement-service
+              order: 3
+              uri: lb://engagement-service
+              predicates:
+                - Path=/api/favorite/**,/api/notification/**
+          globalcors:
+            add-to-simple-url-handler-mapping: true
+            cors-configurations:
+              '[/**]':
+                allowed-origins:
+                  - http://localhost:5173
+                allowed-methods:
+                  - GET
+                  - POST
+                  - PUT
+                  - PATCH
+                  - DELETE
+                  - OPTIONS
+                allowed-headers: '*'
+
+# Eureka 주소는 Config Server의 공통 application.yml에서 가져옵니다.
