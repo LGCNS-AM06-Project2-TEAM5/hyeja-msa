@@ -1,0 +1,13 @@
+# 로컬 개발용: 프로필 미지정 시 기본 적용됩니다.
+# POLICY_DB_PASSWORD는 실행 환경에서 주입합니다.
+spring:
+  datasource:
+    driver-class-name: org.mariadb.jdbc.Driver
+    url: ${POLICY_DB_URL:jdbc:mariadb://localhost:3307/policy_db}
+    username: ${POLICY_DB_USERNAME:policy_user}
+    password: ${POLICY_DB_PASSWORD}
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true

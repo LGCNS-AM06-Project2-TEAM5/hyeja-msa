@@ -38,3 +38,36 @@
 ## 결정 필요
 
 - 정책 상세(로그인)의 자격 판정(PolicyEligibilityEvaluator)을 policy에 둘지, recommendation을 호출할지. 지금 코드는 상세와 검색이 같은 판정 로직을 씁니다.
+
+## 로컬 개발 실행
+
+- `application.yml`: 서비스 이름, Config Server 연결, 랜덤 포트 등 공통 설정.
+- `application-dev.yml`: 로컬 MariaDB 및 JPA 개발 설정. 실제 비밀값 없이 공유하므로 두 파일 모두 커밋합니다.
+
+IntelliJ의 PolicyServiceApplication 실행 설정에 환경변수를 지정합니다.
+
+```text
+POLICY_DB_PASSWORD=<로컬 policy_user 비밀번호>
+```
+
+DB 기본값은 `jdbc:mariadb://localhost:3307/policy_db`, 사용자명은 `policy_user`입니다.
+환경이 다르면 `POLICY_DB_URL`, `POLICY_DB_USERNAME`도 지정합니다.
+비밀번호는 파일에 저장하지 않습니다. `.env`는 Spring Boot가 자동으로 읽지 않으므로 실행 환경에서 주입합니다.
+
+`dev`에서만 `ddl-auto: update`와 SQL 출력이 적용됩니다. 실행 시 DB 스키마가 갱신될 수 있습니다.
+다른 환경에서는 Config Server 또는 환경변수로 해당 환경의 datasource/JPA 설정을 제공해야 합니다.
+프로필을 지정하지 않으면 `spring.profiles.default: dev`에 따라 `dev`가 기본 적용됩니다.
+다른 환경은 `SPRING_PROFILES_ACTIVE`로 명시합니다.
+
+현재 실제 포트는 `server.port: 0`으로 매번 배정됩니다. 로그의 포트를 사용해
+`http://localhost:<포트>/health-check`에서 `policy-service OK`를 확인합니다.
+
+## 테스트와 빌드
+
+```bash
+./gradlew test bootJar
+```
+
+기본 컨텍스트 테스트는 `@ActiveProfiles("test")`로 테스트 전용 설정을 사용합니다.
+H2 메모리 DB를 사용하고 Config Server·Eureka 연동을 비활성화하므로 로컬 MariaDB 비밀번호가 필요하지 않습니다.
+이 테스트는 컨텍스트 초기화 확인용이며 실제 MariaDB 연결·스키마 호환성은 dev 환경에서 별도로 검증합니다.
