@@ -11,3 +11,12 @@ spring:
     hibernate:
       ddl-auto: update
     show-sql: true
+    # 테이블을 만든 뒤 용어 시드를 넣습니다.
+    defer-datasource-initialization: true
+
+  # 용어 50개 시드. 같은 용어는 건너뛰므로 다시 켜도 중복되지 않습니다. 지역은 RegionDataInitializer가 CSV로 적재합니다.
+  sql:
+    init:
+      mode: ${DB_SEED_MODE:always}
+      data-locations: classpath:db/seed/term-data.sql
+      encoding: UTF-8

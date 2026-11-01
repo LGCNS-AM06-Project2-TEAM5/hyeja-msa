@@ -39,6 +39,49 @@
 
 - 정책 상세(로그인)의 자격 판정(PolicyEligibilityEvaluator)을 policy에 둘지, recommendation을 호출할지. 지금 코드는 상세와 검색이 같은 판정 로직을 씁니다.
 
+## 분담 (11-01 합의)
+
+| 담당 | 범위 |
+|---|---|
+| 김예준 | 정책 수집(`/sync`)·OpenAI 분석, 정책 목록(`/housing`)·상세(비로그인), `PolicyController`·`PolicyRepository`, 내부 API 제공(F2·F5) |
+| 홍준서 | 공통 기반(global, 엔티티 5개, 지역·용어 초기 데이터), 지역·용어·카드뉴스, 로그인 기능(`/housing/me`, 상세 판정·하트, 회원 카드뉴스), user·engagement 호출(F6·F4), `policy-updated` 발행(#9) |
+
+- 1차 `PolicyService`는 `PolicySyncService`·`PolicyQueryService`(김예준)와 `PolicyMemberService`(홍준서)로 나눕니다.
+- 옮긴 코드의 1차 테스트도 함께 옮기고, 1차 응답과 같은지 확인한 뒤 PR을 올립니다.
+
+## 패키지 구조
+
+`com.hyeja.policyservice` 아래에 1차 `com.hyeja.domain.*`, `com.hyeja.global.*`를 한 단계 줄여 둡니다.
+
+| 패키지 | 내용 |
+|---|---|
+| `global` | 공통 응답(`ApiResponse`·`ErrorStatus`), 예외 처리, `BaseEntity`, JPA Auditing, `Clock`(Asia/Seoul), 로그인 헤더 읽기 |
+| `policy`, `cardnews`, `region`, `term` | 1차와 같은 하위 구조(`entity`, `enums`, `converter`, `repository`, `service`, `controller`, `dto`) |
+| `client` | 다른 서비스 호출(Feign) |
+| `internal` | 다른 서비스에 주는 내부 API |
+| `event` | Kafka 이벤트 발행 |
+
+## 로그인 회원 정보
+
+policy-service에는 Spring Security·JWT 코드가 없습니다. Gateway가 JWT를 검증한 뒤 `X-Member-Id`·`X-Member-Role` 헤더로 넘겨주고, 외부에서 보낸 같은 이름의 헤더는 Gateway가 지웁니다. 관리자 권한(`/sync`)도 Gateway가 검사합니다.
+
+컨트롤러에서는 1차의 `@AuthenticationPrincipal Long memberId` 대신 `@LoginMemberId Long memberId`를 씁니다. 헤더가 없으면 401(`COMMON_002`)이고, 로그인이 선택인 API는 `@LoginMemberId(required = false)`로 받으면 비로그인일 때 `null`입니다.
+
+## 연결 지점 (먼저 만들어 둔 빈 구현)
+
+| 지점 | 쓰는 쪽 | 지금 동작 | 채우는 시점 |
+|---|---|---|---|
+| `PolicyMemberService.getMemberDetail(policy, memberId)` → `PolicyMemberDetailDTO` | 정책 상세 | 하트 false, 판정 없음(비로그인과 같음) | 3단계, F4·F6 연결 |
+| `PolicyChangedPublisher.publish(policyIds)` | 정책 수집 저장 후 | 아무것도 보내지 않음(`NoOpPolicyChangedPublisher`) | 4단계, `policy-updated` 발행 |
+
+상세 응답의 `isFavorite`·`overallStatus`·`conditions`는 `PolicyMemberDetailDTO` 값을 그대로 옮겨 담습니다. 판정 항목 형식은 `PolicyMemberDetailDTO.ConditionResultDTO`입니다.
+
+## 초기 데이터 (dev)
+
+- 지역 256건: `csv/region_sigungu.csv`를 `RegionDataInitializer`가 앱 시작 때 넣습니다(있으면 이름만 갱신). test 프로필에서는 실행하지 않습니다.
+- 용어 50건: `db/seed/term-data.sql`. 같은 용어는 건너뜁니다. `DB_SEED_MODE=never`로 끌 수 있습니다.
+- 스키마 기준은 [`docs/04_ERD_테이블명세서/policy_db.sql`](../../docs/04_ERD_테이블명세서/policy_db.sql)입니다. 이 SQL로 만든 표에 `ddl-auto=validate`로 기동해 엔티티와 일치함을 확인했습니다.
+
 ## 로컬 개발 실행
 
 - `application.yml`: 서비스 이름, Config Server 연결, 랜덤 포트 등 공통 설정.
