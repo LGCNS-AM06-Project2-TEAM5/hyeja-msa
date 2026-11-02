@@ -8,6 +8,10 @@ import com.hyeja.policyservice.policy.dto.PolicyApiResponseDTO.PolicyItem;
 import com.hyeja.policyservice.policy.enums.*;
 import java.util.List;
 import java.util.Set;
+import com.hyeja.policyservice.policy.repository.PolicyRepository;
+import com.hyeja.policyservice.policy.repository.PolicyRegionRepository;
+import com.hyeja.policyservice.term.repository.TermRepository;
+import java.time.Clock;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.boot.test.system.CapturedOutput;
@@ -20,7 +24,9 @@ class PolicyServiceTest {
     private final PolicyAiAnalyzer policyAiAnalyzer = mock(PolicyAiAnalyzer.class);
     private final PolicySyncItemService policySyncItemService = mock(PolicySyncItemService.class);
     private final PolicyService service = new PolicyService(
-            restTemplate, new PolicyApiCodeConverter(), policyAiAnalyzer, policySyncItemService);
+            restTemplate, new PolicyApiCodeConverter(), policyAiAnalyzer, policySyncItemService, mock(PolicyRepository.class),
+            mock(PolicyRegionRepository.class), mock(TermRepository.class), Clock.systemUTC(),
+            mock(PolicyMemberService.class));
     @Test
     void doesNotSaveNonApprovedHousingPolicy() {
         ReflectionTestUtils.setField(service, "apiKey", "test-key");

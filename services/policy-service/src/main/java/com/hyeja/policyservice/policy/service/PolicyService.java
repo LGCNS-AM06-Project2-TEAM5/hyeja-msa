@@ -5,6 +5,28 @@ import com.hyeja.policyservice.policy.dto.PolicyApiResponseDTO;
 import com.hyeja.policyservice.policy.dto.PolicyApiResponseDTO.PolicyItem;
 import com.hyeja.policyservice.global.apiPayload.status.ErrorStatus;
 import com.hyeja.policyservice.global.exception.GeneralException;
+import com.hyeja.policyservice.policy.converter.PolicyGuestConverter;
+import com.hyeja.policyservice.policy.dto.PolicyGuestResponseDTO;
+import com.hyeja.policyservice.policy.dto.PolicyDetailResponseDTO;
+import com.hyeja.policyservice.policy.dto.PolicyDetailResponseDTO.TermSummaryDTO;
+import com.hyeja.policyservice.policy.dto.PolicyDetailResponseDTO.ConditionResultDTO;
+import com.hyeja.policyservice.policy.dto.PolicyMemberDetailDTO;
+import com.hyeja.policyservice.policy.entity.Policy;
+import com.hyeja.policyservice.policy.entity.PolicyRegion;
+import com.hyeja.policyservice.policy.enums.PolicyCategory;
+import com.hyeja.policyservice.policy.enums.PolicySort;
+import com.hyeja.policyservice.policy.repository.PolicyRepository;
+import com.hyeja.policyservice.policy.repository.PolicyRegionRepository;
+import com.hyeja.policyservice.region.entity.Region;
+import com.hyeja.policyservice.term.repository.TermRepository;
+import java.time.Clock;
+import java.time.LocalDate;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.stream.Collectors;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.transaction.annotation.Transactional;
 import java.net.URI;
 import java.util.Arrays;
 import java.util.List;
@@ -31,6 +53,12 @@ public class PolicyService {
     private final PolicyApiCodeConverter policyApiCodeConverter;
     private final PolicyAiAnalyzer policyAiAnalyzer;
     private final PolicySyncItemService policySyncItemService;
+
+    private final PolicyRepository policyRepository;
+    private final PolicyRegionRepository policyRegionRepository;
+    private final TermRepository termRepository;
+    private final Clock clock;
+    private final PolicyMemberService policyMemberService;
 
     @Value("${youth.api.key}")
     private String apiKey;
@@ -125,5 +153,82 @@ public class PolicyService {
         return value == null || value.isBlank() ? null : value.trim();
     }
 
+
+    @Transactional(readOnly = true)
+    public PolicyGuestResponseDTO.PolicyListDTO getGuestHousingPolicies(
+            PolicyCategory category,
+            PolicySort sort,
+            int page,
+            int size
+    ) {
+        LocalDate today = LocalDate.now(clock);
+        Page<Policy> policyPage = policyRepository.findGuestHousingPolicies(
+                category == null ? null : category.name(),
+                today,
+                PageRequest.of(page, size, sort.toSort())
+        );
+        List<String> policyIds = policyPage.getContent().stream()
+                .map(Policy::getPolicyId)
+                .toList();
+        Map<String, List<Region>> regionsByPolicyId = policyIds.isEmpty()
+                ? Collections.emptyMap()
+                : policyRegionRepository.findAllActiveByPolicyIds(policyIds).stream()
+                        .collect(Collectors.groupingBy(
+                                policyRegion -> policyRegion.getPolicy().getPolicyId(),
+                                Collectors.mapping(PolicyRegion::getRegion, Collectors.toList())
+                        ));
+
+        return PolicyGuestConverter.toPolicyListDTO(policyPage, regionsByPolicyId, today);
+    }
+
+    @Transactional(readOnly = true)
+    // memberId가 null이면 비로그인 조회입니다. 회원 조건 판정 없이 정책 정보만 내려줍니다
+    // (conditions 빈 목록, overallStatus null, isFavorite false).
+    public PolicyDetailResponseDTO getPolicyDetailForMember(String policyId, Long memberId) {
+        Policy policy = policyRepository.findById(policyId)
+                .orElseThrow(() -> new GeneralException(ErrorStatus.POLICY_NOT_FOUND));
+        String extraQualification = policy.getExtraQualification();
+        List<TermSummaryDTO> terms = extraQualification == null
+                ? List.of()
+                : termRepository.findAllByDeletedAtIsNullOrderByTermIdAsc().stream()
+                        .filter(term -> !term.getTerm().isBlank()
+                                && extraQualification.contains(term.getTerm()))
+                        .map(term -> new TermSummaryDTO(term.getTermId(), term.getTerm()))
+                        .toList();
+        PolicyMemberDetailDTO memberDetail = memberId == null
+                ? PolicyMemberDetailDTO.guest()
+                : policyMemberService.getMemberDetail(policy, memberId);
+        List<ConditionResultDTO> conditions = memberDetail.conditions().stream()
+                .map(condition -> new ConditionResultDTO(condition.type(), condition.status(),
+                        condition.policyCondition(), condition.memberValue()))
+                .toList();
+
+        return new PolicyDetailResponseDTO(
+                policy.getPolicyId(),
+                policy.getPolicyName(),
+                policy.getCategories(),
+                policy.getCategories().stream()
+                        .sorted(Comparator.comparing(Enum::name))
+                        .map(com.hyeja.policyservice.policy.enums.PolicyCategory::getLabel)
+                        .toList(),
+                policy.getApiSubCategory(),
+                policy.getKeywords(),
+                policy.getDescription(),
+                policy.getSupportContent(),
+                extraQualification,
+                terms,
+                policy.getApplyPeriodCode(),
+                policy.getApplyPeriodCode() == null
+                        ? null : policy.getApplyPeriodCode().getLabel(),
+                policy.getApplyStartDate(),
+                policy.getApplyEndDate(),
+                policy.getApplyMethod(),
+                policy.getApplyUrl(),
+                policy.getRefUrl(),
+                policy.getActiveYn(),
+                memberDetail.isFavorite(),
+                memberDetail.overallStatus(),
+                conditions);
+    }
 
 }
