@@ -1,4 +1,8 @@
 spring:
+  # 컨텍스트 테스트에서 JavaMailSender Bean만 생성합니다. 실제 메일은 보내지 않습니다.
+  mail:
+    host: localhost
+
   # Config Server(8888)에 접속하지 않음
   cloud:
     config:
@@ -20,3 +24,6 @@ spring:
 eureka:
   client:
     enabled: false
+
+jwt:
+  secret: hyeja-test-only-jwt-secret-key-0123456789

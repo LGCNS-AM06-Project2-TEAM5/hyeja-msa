@@ -13,3 +13,7 @@ spring:
 
 server:
   port: 0
+
+# Gateway와 같은 환경변수를 사용합니다. 실제 키는 저장소에 커밋하지 않습니다.
+jwt:
+  secret: ${JWT_SECRET}
