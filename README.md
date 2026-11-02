@@ -38,7 +38,7 @@ hyeja-msa/
 | 서비스 | 담당 | 포트 | DB |
 |---|---|---|---|
 | discovery-service · config-service · gateway-service | 이지원 | 8761 · 8888 · 8000 | - |
-| user-service | 강태현, 차현준 | 8081 | user_db |
+| user-service | 강태현, 차현준 | 8081 | user_db (지역은 읽기 복사본) |
 | policy-service | 김예준, 홍준서 | 8082 | policy_db |
 | engagement-service | 손수연 | 8083 | engagement_db |
 | recommendation-service | 류지범 | 8084 | - |
