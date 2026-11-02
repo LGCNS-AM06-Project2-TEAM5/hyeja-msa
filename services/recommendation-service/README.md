@@ -12,6 +12,10 @@
 
 요구사항 명세서의 `/api/recommendations`는 제안 경로였고, 프런트와 백엔드는 `/api/policies/search`를 씁니다. 경로는 그대로 두고 Gateway가 이 경로만 recommendation으로 보냅니다.
 
+회원 ID는 Gateway가 JWT를 검증한 뒤 넣는 `X-Member-Id` 헤더로 받습니다(없으면 401 `COMMON_002`).
+
+**현재 상태:** 검색 코어·AI 분석은 옮겼지만 F1·F2·F3 Feign Client 구현 전이라 `recommendation.search.enabled=false`(기본값)로 검색 API를 등록하지 않습니다. 켜려면 `ProfileClient`·`PolicyClient`·`FavoriteClient` 구현 빈과 `OPEN_AI_KEY`·`OPEN_AI_MODEL`이 필요합니다.
+
 ## 옮겨 올 코드 (hyeja-backend)
 
 - [`domain/policy/service`](https://github.com/LGCNS-AM06-Project2-TEAM5/hyeja-backend/tree/develop/src/main/java/com/hyeja/domain/policy/service) 중 PolicySearchService, PolicyEligibilityEvaluator, PolicyIncomeEligibilityEvaluator, OpenAiPolicySearchAnalyzer, PolicySearchAiAnalyzer
