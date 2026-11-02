@@ -4,6 +4,8 @@
 
 관심 정책(♡) 등록·해제·목록(키워드 검색·페이징), 관심 여부 일괄 조회, 마감 D-7 앱 알림 생성·조회·읽음·삭제, (여유 있을 때) 마감 알림 메일 발송을 맡습니다.
 
+인증은 Gateway의 사용자 JWT 검증 후 전달되는 내부 JWT를 검증하는 방식입니다. Gateway와 동일한 별도 대칭키 `GATEWAY_ENGAGEMENT_SECRET`(최소 32 UTF-8 바이트)을 환경변수로 주입해야 합니다. `X-Member-Id`만 보낸 요청은 인증되지 않습니다. [내부 인증 설계](../../docs/architecture/gateway-engagement-auth.md)
+
 ## 외부 API (Gateway 경로)
 
 | 메서드 | 경로 | 인증 |
