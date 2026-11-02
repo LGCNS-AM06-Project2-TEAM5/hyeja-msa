@@ -9,10 +9,10 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 
-@Repository 
+@Repository
 public interface CardNewsRepository extends JpaRepository<CardNews, Long> {
 
-    // LIMIT 4를 포함하여 대표 카드(card_no = 1)를 마감일 오름차순으로 상위 4개 조회
+    // 대표 카드(card_no = 1)를 마감일 오름차순으로 조회. 가져올 개수는 Pageable로 정함
     @Query("""
             select cardNews from CardNews cardNews join fetch cardNews.policy policy
             where cardNews.cardNo = 1 and cardNews.deletedAt is null
@@ -48,7 +48,7 @@ public interface CardNewsRepository extends JpaRepository<CardNews, Long> {
             @Param("today") java.time.LocalDate today,
             Pageable pageable);
 
-    // 특정 정책 ID와 카드 번호(card_No)로 카드뉴스가 이미 존재하는지 확인하는 메서드
+    // 특정 정책 ID와 카드 번호(card_no)로 카드뉴스가 이미 존재하는지 확인하는 메서드
     boolean existsByPolicy_PolicyIdAndCardNo(String policyId, Long cardNo);
 
     @Query("""
