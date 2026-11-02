@@ -1,0 +1,57 @@
+# Compose 연결 검증용 경로는 기존 SecurityConfig의 기본 인증 정책을 따릅니다.
+# Spring의 리스트 설정은 병합되지 않으므로 기존 업무 경로도 함께 명시합니다.
+spring:
+  cloud:
+    gateway:
+      server:
+        webflux:
+          routes:
+            - id: recommendation-service
+              order: 0
+              uri: lb://recommendation-service
+              predicates:
+                - Path=/api/policies/search
+                - Method=GET
+            - id: policy-service
+              order: 1
+              uri: lb://policy-service
+              predicates:
+                - Path=/api/policies/**,/api/regions,/api/terms/**
+            - id: user-service
+              order: 2
+              uri: lb://user-service
+              predicates:
+                - Path=/api/members/**
+            - id: engagement-service
+              order: 3
+              uri: lb://engagement-service
+              predicates:
+                - Path=/api/favorite/**,/api/notification/**
+            - id: docker-health-user
+              uri: lb://user-service
+              predicates:
+                - Path=/_infra/health/user
+                - Method=GET
+              filters:
+                - SetPath=/health-check
+            - id: docker-health-policy
+              uri: lb://policy-service
+              predicates:
+                - Path=/_infra/health/policy
+                - Method=GET
+              filters:
+                - SetPath=/health-check
+            - id: docker-health-engagement
+              uri: lb://engagement-service
+              predicates:
+                - Path=/_infra/health/engagement
+                - Method=GET
+              filters:
+                - SetPath=/health-check
+            - id: docker-health-recommendation
+              uri: lb://recommendation-service
+              predicates:
+                - Path=/_infra/health/recommendation
+                - Method=GET
+              filters:
+                - SetPath=/health-check
