@@ -30,9 +30,9 @@
 | 방향 | 방식 | 내용 |
 |---|---|---|
 | 제공 → recommendation, policy | Feign | 회원의 내 조건 조회 (생년월일, 거주지 코드, 취업 상태, 무주택, 혼인, 소득 구간, 학력, 주거 형태) |
-| 사용 → policy | Feign 또는 지역 복사본 | 거주지 코드 검증과 시군구 이름 (지금 코드는 ProfileService·MemberService가 RegionRepository를 직접 사용) — **결정 필요** |
-| 발행 | Kafka `member-registered` | 가입 완료 후 (웰컴 메일, 신규 기능 · 승인 후) |
-| 발행 | Kafka `member-withdrawn` (제안) | 탈퇴 후 engagement의 관심 정책·알림 정리 (지금 코드는 한 트랜잭션에서 직접 삭제) — **결정 필요** |
+| 지역 복사본 | user_db `region` | 거주지 코드 검증과 시군구 이름. policy와 같은 지역 CSV로 적재하고 policy를 호출하지 않습니다 (#1 확정) |
+| 발행 | Kafka `member-registered` | 웰컴 메일용. 이번에 하지 않음 (#1 확정) |
+| 발행 | Kafka `member-withdrawn` | 탈퇴 저장 후 engagement의 관심 정책·알림 정리 (지금 코드는 한 트랜잭션에서 직접 삭제). Saga는 선택 (#1 확정) |
 
 ## 바뀌는 점
 

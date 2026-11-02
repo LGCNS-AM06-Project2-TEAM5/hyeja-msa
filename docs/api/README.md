@@ -27,8 +27,8 @@ Gateway 라우팅과 인증 규칙은 [infra/gateway-service](../../infra/gatewa
 | F4 | policy → engagement | 관심 여부 일괄 조회 (목록·상세·카드뉴스) | `PolicyService`, `CardNewsService` | 하트 없이 응답 | 설계서 |
 | F5 | engagement → policy | 관심 등록 시 정책 존재·스냅샷 확인 | `FavoriteService` → `PolicyRepository` | 등록 실패 안내 | 설계서 |
 | F6 | policy → user | 회원의 내 조건 조회 (`/housing/me` 필터, 상세 판정, 회원 카드뉴스) | `PolicyService` 200·249행, `CardNewsService` 60행 → `ProfileService` | 비로그인 응답과 같게 | **코드 대조로 추가** |
-| F7 | user → policy | 거주지 코드 검증·시군구 이름 (가입, 내 조건 저장·조회) | `MemberService` 66행, `ProfileService` 49행 → `RegionRepository` | 저장 실패 안내 | **코드 대조로 추가 · 지역 복사본과 중 선택** |
-| F8 | policy → recommendation | 정책 상세의 자격 판정 | `PolicyService` 252행 → `PolicyEligibilityEvaluator` | 판정 없이 응답 | **결정 필요 · 판정 로직을 policy에도 둘지 선택** |
+| F7 | user → policy | 거주지 코드 검증·시군구 이름 (가입, 내 조건 저장·조회) | `MemberService` 66행, `ProfileService` 49행 → `RegionRepository` | - | **두지 않음 (#1 확정)** · user_db에 지역 복사본을 두고 같은 CSV로 적재 |
+| F8 | policy → recommendation | 정책 상세의 자격 판정 | `PolicyService` 252행 → `PolicyEligibilityEvaluator` | - | **두지 않음 (#1 확정)** · 판정 코드를 policy·recommendation이 같이 씀 |
 
 규칙: 한 요청 안에서 A→B→A로 되돌아오는 호출은 만들지 않습니다. 여러 건은 반드시 일괄 조회로 한 번에 가져옵니다.
 
@@ -37,9 +37,9 @@ Gateway 라우팅과 인증 규칙은 [infra/gateway-service](../../infra/gatewa
 | 토픽 | 발행 | 구독 | 발생 시점 | 목적 | 범위 |
 |---|---|---|---|---|---|
 | `policy-updated` | policy | engagement | 수집·변경 저장 후 | 정책 스냅샷 읽기 모델 갱신 | **우선 구현** |
-| `member-registered` | user | engagement | 가입 커밋 후 | 웰컴 메일 | 신규 기능 · 승인 후 |
-| `notification-created` | engagement | engagement 내부 Worker | 앱 알림 저장 후 | 마감 알림 메일 발송 | 신규 기능 · 승인 후 |
-| `member-withdrawn` | user | engagement | 탈퇴 커밋 후 | 관심 정책·알림 정리 | **제안 · 결정 필요** |
+| `member-registered` | user | engagement | 가입 커밋 후 | 웰컴 메일 | 이번에 하지 않음 (#1 확정) |
+| `notification-created` | engagement | engagement 내부 Worker | 앱 알림 저장 후 | 마감 알림 메일 발송 | 여유 있을 때 (#1 확정) |
+| `member-withdrawn` | user | engagement | 탈퇴 커밋 후 | 관심 정책·알림 정리 | **구현 (#1 확정)** · Saga는 선택 |
 
 공통 필드: `eventId`(중복 처리 확인), `eventType`, `eventVersion`, `occurredAt`, `aggregateId`. 개인정보와 토큰은 넣지 않습니다.
 

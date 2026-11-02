@@ -129,8 +129,8 @@ MSA 구성요소는 **지원님 개인 실습 저장소**에 있습니다. 수�
 | Eureka·Config·Gateway·Docker·K8s | 이지원 | - | 인프라 |
 
 - AI는 별도 서비스로 두지 않습니다. 정책 분석·카드뉴스는 policy, 검색·판정 설명은 recommendation에 둡니다(설계서 원칙).
-- 동기(Feign): recommendation→user·policy·engagement, policy→engagement, engagement→policy. **코드 대조로 추가 필요한 호출**: policy→user(내 조건), user→policy(지역), 정책 상세 판정 위치.
-- 비동기(Kafka): `policy-updated`(우선), `member-registered`·`notification-created`(신규 메일, 승인 후), `member-withdrawn`(제안).
+- 동기(Feign): recommendation→user·policy·engagement, policy→engagement, engagement→policy. **코드 대조로 추가 필요한 호출**: policy→user(내 조건). 지역은 user_db 복사본, 정책 상세 판정은 판정 코드를 같이 쓰기로 해 user→policy·policy→recommendation 호출은 두지 않습니다(이슈 #1 확정).
+- 비동기(Kafka): `policy-updated`(우선), `member-withdrawn`(이슈 #1 확정), `notification-created`(마감 알림 메일, 여유 있을 때). `member-registered`(웰컴 메일)는 이번에 하지 않습니다.
 - 상세 계약과 대조 결과는 hyeja-msa 저장소의 `docs/api/README.md`, `docs/architecture/설계_코드_대조.md`에 있습니다.
 
 **핵심 기술 후보**: Kafka 이벤트 동기화(`policy-updated` 멱등성·재시도·DLT, 1차 때 10분 걸리던 수집을 AI 분석과 분리) 또는 Saga(회원 탈퇴 보상).
