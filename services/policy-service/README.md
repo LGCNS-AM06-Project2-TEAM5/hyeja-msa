@@ -100,3 +100,28 @@ SDK에 필요한 Jackson 2 ObjectMapper와 Spring MVC의 Jackson 3 매퍼를 구
 키·모델이 없으면 명확한 환경변수 안내와 함께 실패합니다. 매 실행 시 실제 검증하도록 이전 결과를 재사용하지 않습니다.
 성공 시 응답 파싱과 필수 분석 값의 존재를 확인하며, 가변적인 문구 자체를 고정 값과 비교하지 않습니다.
 실제 정책 수집·DB 저장·`/sync` 연결은 후속 작업입니다.
+
+## 정책 수집·동기화 (`POST /api/policies/sync`)
+
+원본 `3e47bb1`의 수집 로직을 이관했습니다. 실행 환경에 `YOUTH_API_KEY`를 추가합니다.
+기본 온통청년 주소는 `https://www.youthcenter.go.kr/go/ythip/getPlcy`입니다.
+OpenAI 분석에는 앞 절의 `OPEN_AI_KEY`·`OPEN_AI_MODEL`도 필요합니다.
+
+- 페이지당 100건, 최대 50페이지를 조회하고 주거·승인 정책만 선별합니다.
+- 페이지 요청이 실패하면 1회 재시도하며, 다시 실패하면 502 `POLICY_002`와 `stoppedPage`, `savedCount`를 반환합니다.
+- 정책별 AI 분석 후 `PolicySyncItemService.save`의 독립 트랜잭션으로 정책·지역·누락 카드뉴스를 저장합니다. 개별 분석·저장 실패는 건너뛰고 다음 정책을 처리합니다.
+- 재수집은 정책과 지역 연결을 갱신하며 기존 카드뉴스는 유지하고 없는 번호만 생성합니다. 지역 코드가 없거나 `00000`이면 전국, 시·도 코드는 기존 시군구로 확장합니다.
+- 성공 응답은 기존 `SUCCESS_001`과 `온통청년 주거 정책 N건 동기화가 완료되었습니다.` 문구를 유지합니다. N은 성공 처리한 항목 수입니다.
+
+Gateway의 `SecurityConfig`는 이 경로를 ADMIN 전용으로 제한하고 `JwtAuthenticationWebFilter`가
+외부 회원 헤더를 제거한 뒤 검증된 `X-Member-Id`, `X-Member-Role`을 설정합니다.
+Policy Controller에서도 양의 회원 ID와 ADMIN 역할을 확인합니다. Policy에는 Security·JWT를 추가하지 않습니다.
+헤더는 Gateway를 신뢰하는 내부 계약이므로 Policy 포트를 외부에 직접 노출하지 않는 배포 구성이 전제입니다.
+PR #37의 공통 회원 헤더 리졸버는 현재 브랜치에 없어 직접 헤더를 읽으며, 반영 후 공통화할 수 있습니다.
+
+카드뉴스 Entity·Repository는 현재 팀원 구현을 사용합니다. `policy-updated` 발행은 아직 연결하지 않았으며
+이벤트 담당자가 `PolicySyncItemService.save`의 저장 트랜잭션과 발행 경계를 맞춰야 합니다.
+현재 코드가 Kafka 동기화까지 보장하는 것은 아닙니다.
+
+자동 테스트는 외부 API·AI를 대체하며, H2에서 재수집·카드 중복 방지·항목 롤백·앞선 커밋 유지까지 확인합니다.
+실제 온통청년·OpenAI 대량 호출, MariaDB 쓰기, Gateway 경유 통합 실행은 별도 검증입니다.
