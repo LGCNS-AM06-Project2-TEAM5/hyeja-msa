@@ -19,9 +19,11 @@ reviews:
   auto_review:
     enabled: true
     drafts: false
+    # 앞 PR 브랜치 위에 쌓아 올린 PR도 자동 리뷰합니다(정규식, 작업 브랜치 이름 규칙 <tag>/<이슈번호>/<설명>).
     base_branches:
-      - develop
-      - main
+      - ^develop$
+      - ^main$
+      - ^(feat|fix|refactor|chore|docs|test|infra)/.+
   finishing_touches:
     docstrings:
       enabled: false

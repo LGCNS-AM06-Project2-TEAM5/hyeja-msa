@@ -2,7 +2,7 @@
 
 담당: 손수연 · 포트 8083 · DB `engagement_db` (favorite, notification, 정책 스냅샷 읽기 모델)
 
-관심 정책(♡) 등록·해제·목록(키워드 검색·페이징), 관심 여부 일괄 조회, 마감 D-7 앱 알림 생성·조회·읽음·삭제, (승인 시) 웰컴·마감 알림 메일 발송을 맡습니다.
+관심 정책(♡) 등록·해제·목록(키워드 검색·페이징), 관심 여부 일괄 조회, 마감 D-7 앱 알림 생성·조회·읽음·삭제, (여유 있을 때) 마감 알림 메일 발송을 맡습니다.
 
 ## 외부 API (Gateway 경로, 기존 계약 유지)
 
@@ -27,9 +27,8 @@
 | 제공 → policy, recommendation | Feign | 회원의 관심 정책 ID 일괄 조회 |
 | 사용 → policy | Feign | 관심 등록 시 정책 존재·스냅샷 확인 |
 | 구독 | Kafka `policy-updated` | 정책 스냅샷 읽기 모델 갱신 |
-| 구독 | Kafka `member-registered` | 웰컴 메일 (신규 기능 · 승인 후) |
-| 발행·구독 | Kafka `notification-created` | 내부 Worker가 마감 알림 메일 발송 (신규 기능 · 승인 후) |
-| 구독 | Kafka `member-withdrawn` (제안) | 탈퇴 회원의 관심 정책·알림 정리 |
+| 발행·구독 | Kafka `notification-created` | 내부 Worker가 마감 알림 메일 발송 (여유 있을 때, #1 확정) |
+| 구독 | Kafka `member-withdrawn` | 탈퇴 회원의 관심 정책·알림 정리. `eventId`로 중복 무시, 실패 시 재시도 후 DLT (#1 확정) |
 
 ## 정책 스냅샷 읽기 모델
 
