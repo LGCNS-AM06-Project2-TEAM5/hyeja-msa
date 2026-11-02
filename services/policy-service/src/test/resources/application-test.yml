@@ -1,4 +1,10 @@
 spring:
+  ai:
+    openai:
+      api-key: test-not-a-real-key
+      chat:
+        options:
+          model: test-model
   cloud:
     config:
       enabled: false

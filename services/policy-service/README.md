@@ -71,3 +71,31 @@ DB 기본값은 `jdbc:mariadb://localhost:3307/policy_db`, 사용자명은 `poli
 기본 컨텍스트 테스트는 `@ActiveProfiles("test")`로 테스트 전용 설정을 사용합니다.
 H2 메모리 DB를 사용하고 Config Server·Eureka 연동을 비활성화하므로 로컬 MariaDB 비밀번호가 필요하지 않습니다.
 이 테스트는 컨텍스트 초기화 확인용이며 실제 MariaDB 연결·스키마 호환성은 dev 환경에서 별도로 검증합니다.
+
+## OpenAI 정책 분석
+
+원본 `Hyejabonjuui/backend`의 `3e47bb1` 기준 정책 분석 코드를 이관했습니다.
+`PolicyAiAnalyzer`는 정책 수집용 분석 인터페이스이며 검색·추천 분석은 포함하지 않습니다.
+프롬프트·JSON Schema·카테고리 및 소득 보정·실패 전달 규칙은 기존 코드와 동일합니다.
+
+실행 환경에 다음 변수를 지정합니다. 실제 키를 yml이나 Git에 저장하지 않습니다.
+
+```text
+OPEN_AI_KEY=<본인의 OpenAI API 키>
+OPEN_AI_MODEL=<기존 프로젝트에서 사용하던 모델명>
+```
+
+키와 모델은 애플리케이션 기동에 필요합니다. IntelliJ 실행 설정의 환경변수는 터미널에 자동 전달되지 않습니다.
+기본 `test`는 테스트 전용 가짜 키와 모델 및 모의 클라이언트를 사용하며 외부 API를 호출하지 않습니다.
+SDK에 필요한 Jackson 2 ObjectMapper와 Spring MVC의 Jackson 3 매퍼를 구분해 유지합니다.
+
+실제 호출 검증은 두 환경변수가 설정된 터미널에서 별도로 실행합니다.
+
+```bash
+./gradlew openAiIntegrationTest
+```
+
+이 작업은 샘플 정책 1건을 실제 OpenAI로 분석하므로 비용과 외부 네트워크가 필요합니다.
+키·모델이 없으면 명확한 환경변수 안내와 함께 실패합니다. 매 실행 시 실제 검증하도록 이전 결과를 재사용하지 않습니다.
+성공 시 응답 파싱과 필수 분석 값의 존재를 확인하며, 가변적인 문구 자체를 고정 값과 비교하지 않습니다.
+실제 정책 수집·DB 저장·`/sync` 연결은 후속 작업입니다.
