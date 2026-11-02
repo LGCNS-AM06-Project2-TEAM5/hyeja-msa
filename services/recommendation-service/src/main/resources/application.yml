@@ -7,5 +7,19 @@ spring:
   config:
     import: optional:configserver:http://localhost:8888
 
+  # 1차와 같은 키 이름입니다. 값은 .env의 OPEN_AI_KEY·OPEN_AI_MODEL로만 넣습니다.
+  ai:
+    openai:
+      api-key: ${OPEN_AI_KEY}
+      chat:
+        options:
+          model: ${OPEN_AI_MODEL}
+
+# 검색 API(GET /api/policies/search)는 user·policy·engagement Feign Client(F1·F2·F3)가 구현될 때까지 꺼 둡니다.
+# 켜면 ProfileClient·PolicyClient·FavoriteClient 구현 빈과 OPEN_AI_KEY·OPEN_AI_MODEL이 있어야 기동됩니다.
+recommendation:
+  search:
+    enabled: false
+
 server:
   port: 0
