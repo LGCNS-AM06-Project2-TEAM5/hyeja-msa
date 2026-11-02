@@ -35,6 +35,7 @@ public class RegionDataInitializer implements CommandLineRunner {
         // 시군구 256건(구가 있는 시의 상위 시 제외). 출처·가공 방법·갱신 방법은 CSV 파일 맨 위 # 주석에 적어 두었습니다.
         ClassPathResource resource = new ClassPathResource("csv/region_sigungu.csv");
 
+        // 실패를 삼키면 지역이 빈 채로 서버가 떠서 알아채기 어렵습니다. 읽기 실패나 빈 CSV는 예외로 두어 시작을 멈춥니다.
         try (InputStream inputStream = resource.getInputStream();
              BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
             
@@ -74,16 +75,12 @@ public class RegionDataInitializer implements CommandLineRunner {
                     .toList();
 
             if (regions.isEmpty()) {
-                log.info("[RegionDataInitializer] Region CSV is empty.");
-                return;
+                throw new IllegalStateException("지역 CSV에 데이터가 없습니다: csv/region_sigungu.csv");
             }
 
             // 3. 코드가 있으면 이름을 갱신하고, 없으면 새 지역을 추가합니다.
             regionRepository.saveAll(regions);
             log.info("[RegionDataInitializer] Synchronized {} regions.", regions.size());
-
-        } catch (Exception e) {
-            log.error("[RegionDataInitializer] Failed to upload region CSV data", e);
         }
     }
 }
