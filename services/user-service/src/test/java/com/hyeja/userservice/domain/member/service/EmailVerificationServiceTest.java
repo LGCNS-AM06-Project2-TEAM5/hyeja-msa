@@ -108,6 +108,30 @@ class EmailVerificationServiceTest {
     }
 
     @Test
+    void sendRejectsMissingMailConfigOutsideLocalDevelopment() {
+        ReflectionTestUtils.setField(service, "mailFrom", "");
+        ReflectionTestUtils.setField(service, "logVerificationCode", false);
+        when(values.setIfAbsent(anyString(), anyString(), any(Duration.class))).thenReturn(true);
+
+        assertError(() -> service.send(EMAIL), ErrorStatus.MAIL_SEND_FAILED);
+
+        verify(redisTemplate).delete("email-verification:cooldown:" + EMAIL);
+        verify(values, never()).set(eq("email-verification:code:" + EMAIL), anyString(), any(Duration.class));
+    }
+
+    @Test
+    void sendAllowsCodeLogOnlyWhenLocalDevelopmentEnablesIt() {
+        ReflectionTestUtils.setField(service, "mailFrom", "");
+        ReflectionTestUtils.setField(service, "logVerificationCode", true);
+        when(values.setIfAbsent(anyString(), anyString(), any(Duration.class))).thenReturn(true);
+
+        assertThat(service.send(EMAIL)).isEqualTo(300);
+
+        verify(mailSender, never()).send(any(MimeMessage.class));
+        verify(values).set(eq("email-verification:code:" + EMAIL), anyString(), eq(Duration.ofMinutes(5)));
+    }
+
+    @Test
     void confirmMarksEmailVerifiedForThirtyMinutes() {
         when(values.get("email-verification:code:" + EMAIL)).thenReturn("384021");
         when(values.increment("email-verification:failures:" + EMAIL)).thenReturn(1L);

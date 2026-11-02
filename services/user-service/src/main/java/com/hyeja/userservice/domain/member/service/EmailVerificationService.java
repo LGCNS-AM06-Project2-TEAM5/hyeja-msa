@@ -43,6 +43,9 @@ public class EmailVerificationService {
     @Value("${spring.mail.username:}")
     private String mailFrom;
 
+    @Value("${hyeja.mail.log-verification-code:false}")
+    private boolean logVerificationCode;
+
     public long send(String email) {
         if (memberRepository.existsByEmail(email)) {
             throw new GeneralException(ErrorStatus.MEMBER_EMAIL_DUPLICATED);
@@ -57,7 +60,7 @@ public class EmailVerificationService {
         try {
             deliver(email, code);
         } catch (MailException e) {
-            log.warn("인증 메일 발송 실패: {}", email, e);
+            log.warn("인증 메일 발송 실패", e);
             redisTemplate.delete(key("cooldown", email));
             throw new GeneralException(ErrorStatus.MAIL_SEND_FAILED);
         }
@@ -122,7 +125,10 @@ public class EmailVerificationService {
 
     private void deliver(String email, String code) {
         if (mailFrom.isBlank()) {
-            log.info("[로컬 개발] MAIL_USERNAME이 없어 메일 대신 로그로 출력합니다. {} 인증 코드: {}", email, code);
+            if (!logVerificationCode) {
+                throw new MailPreparationException("메일 발신자 설정이 없습니다.");
+            }
+            log.info("[로컬 개발] 이메일 인증 코드: {}", code);
             return;
         }
 

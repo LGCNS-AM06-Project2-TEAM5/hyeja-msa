@@ -43,3 +43,8 @@ spring:
     properties:
       hibernate:
         format_sql: true
+
+# 로컬 개발에서만 메일 대신 로그로 인증 코드를 확인합니다.
+hyeja:
+  mail:
+    log-verification-code: true
