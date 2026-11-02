@@ -28,10 +28,16 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-webmvc'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa' // JPA :Entity와 Repository를 쓰기 위한 JPA
     implementation 'org.springframework.boot:spring-boot-h2console' // H2 콘솔 :브라우저에서 H2 DB를 볼 수 있는 콘솔. Boot 4부터는 따로 추가해야 합니다
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+    implementation 'org.springframework.boot:spring-boot-starter-mail'
+    implementation 'org.springframework.security:spring-security-crypto'
+    implementation 'io.jsonwebtoken:jjwt-api:0.13.0'
     implementation 'org.springframework.cloud:spring-cloud-starter-config'
     implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
     compileOnly 'org.projectlombok:lombok'
     runtimeOnly 'com.h2database:h2' // H2 DB 드라이버
+    runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.13.0'
+    runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.13.0'
     implementation 'tools.jackson.dataformat:jackson-dataformat-csv' // 지역 CSV 읽기 (Boot 4는 Jackson 3)
     annotationProcessor 'org.projectlombok:lombok'
     testImplementation 'org.springframework.boot:spring-boot-starter-actuator-test'

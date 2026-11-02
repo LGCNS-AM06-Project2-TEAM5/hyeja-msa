@@ -29,7 +29,12 @@ dependencies {
     implementation 'org.springframework.cloud:spring-cloud-starter-config'
     implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation('com.openai:openai-java:4.69.2') {
+        exclude group: 'io.swagger.core.v3', module: 'swagger-annotations'
+    }
     runtimeOnly 'org.mariadb.jdbc:mariadb-java-client'
+    // 지역 CSV 초기 적재(RegionDataInitializer)
+    implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-csv'
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
     testImplementation 'org.springframework.boot:spring-boot-starter-actuator-test'
@@ -49,5 +54,20 @@ dependencyManagement {
 }
 
 tasks.named('test') {
-    useJUnitPlatform()
+    useJUnitPlatform {
+        excludeTags 'openai-integration'
+    }
+}
+
+tasks.register('openAiIntegrationTest', Test) {
+    description = 'Runs the explicitly requested live OpenAI policy analysis test.'
+    group = 'verification'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform {
+        includeTags 'openai-integration'
+    }
+    shouldRunAfter tasks.named('test')
+    // 실제 호출 검증을 명시적으로 요청하면 이전 결과와 관계없이 실행합니다.
+    outputs.upToDateWhen { false }
 }

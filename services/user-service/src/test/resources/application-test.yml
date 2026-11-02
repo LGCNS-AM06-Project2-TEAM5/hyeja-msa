@@ -20,3 +20,6 @@ spring:
 eureka:
   client:
     enabled: false
+
+jwt:
+  secret: hyeja-test-only-jwt-secret-key-0123456789
