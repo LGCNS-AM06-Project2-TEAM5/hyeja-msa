@@ -65,7 +65,7 @@ Gateway 라우팅과 인증 규칙은 [infra/gateway-service](../../infra/gatewa
 - `marriageCode`, `incomeRangeCode`, `educationCode`, `housingType`은 선택 항목이라 `null`일 수 있습니다.
 - 필드명과 enum 값은 1차 코드(hyeja-backend)의 Profile과 같습니다.
 - 나이는 계산하지 않고 `birth`만 반환합니다. 판정 기준 날짜는 호출하는 쪽이 정합니다.
-- `sigunguName`은 user_db의 지역 읽기 복사본에서 채웁니다.
+- `sigunguName`은 user_db의 지역 읽기 복사본에서 채웁니다. 복사본에 해당 코드가 없으면(행정구역 변경 등) `null`이며, 이때도 `regionCode`는 채워집니다.
 
 오류 (ApiResponse 실패 형식, 1차 `ProfileService.getActiveProfile`과 같은 기준)
 

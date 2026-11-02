@@ -7,6 +7,7 @@ import com.hyeja.userservice.domain.member.entity.Member;
 import com.hyeja.userservice.domain.member.repository.MemberRepository;
 import com.hyeja.userservice.domain.profile.dto.MemberProfileDTO;
 import com.hyeja.userservice.domain.profile.dto.ProfileRequestDTO;
+import com.hyeja.userservice.domain.profile.entity.Profile;
 import com.hyeja.userservice.domain.profile.enums.EmploymentStatus;
 import com.hyeja.userservice.domain.profile.enums.IncomeRange;
 import com.hyeja.userservice.domain.profile.repository.ProfileRepository;
@@ -124,5 +125,18 @@ class ProfileServiceTest {
         assertThatThrownBy(() -> profileService.getMemberProfile(999L))
                 .extracting("code")
                 .isEqualTo(ErrorStatus.MEMBER_NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("조건이 삭제됐으면 PROFILE_NOT_FOUND를 던진다")
+    void getMemberProfileWithDeletedProfile() {
+        Profile profile = profileService.create(member, request("11110"));
+        profile.softDelete();
+        profileRepository.flush();
+
+        assertThatThrownBy(() -> profileService.getMemberProfile(member.getMemberId()))
+                .isInstanceOf(GeneralException.class)
+                .extracting("code")
+                .isEqualTo(ErrorStatus.PROFILE_NOT_FOUND);
     }
 }
