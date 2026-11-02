@@ -1,0 +1,10 @@
+spring:
+  datasource:
+    driver-class-name: org.mariadb.jdbc.Driver
+    url: ${ENGAGEMENT_DB_URL:jdbc:mariadb://localhost:3308/engagement_db}
+    username: ${ENGAGEMENT_DB_USERNAME:engagement_user}
+    password: ${ENGAGEMENT_DB_PASSWORD}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: update

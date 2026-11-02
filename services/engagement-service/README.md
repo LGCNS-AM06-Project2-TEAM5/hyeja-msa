@@ -4,7 +4,7 @@
 
 관심 정책(♡) 등록·해제·목록(키워드 검색·페이징), 관심 여부 일괄 조회, 마감 D-7 앱 알림 생성·조회·읽음·삭제, (여유 있을 때) 마감 알림 메일 발송을 맡습니다.
 
-## 외부 API (Gateway 경로, 기존 계약 유지)
+## 외부 API (Gateway 경로)
 
 | 메서드 | 경로 | 인증 |
 |---|---|---|
@@ -14,7 +14,8 @@
 | GET | `/api/notification` | 로그인 |
 | PATCH | `/api/notification/{notificationId}/read` | 로그인 |
 | DELETE | `/api/notification/{notificationId}` | 로그인 |
-| POST | `/api/notification/admin/generate` | 관리자 |
+
+알림은 매일 00:05 Asia/Seoul에 스케줄러가 자동 생성하며 수동 생성 API는 제공하지 않습니다. 현재 동작과 테스트 방법은 [API 명세서](../../docs/api/engagement-api.md)를 참고하세요.
 
 ## 옮겨 올 코드 (hyeja-backend)
 

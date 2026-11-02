@@ -1,11 +1,17 @@
 spring:
   application:
     name: engagement-service
-
-  # Config Server(8888)에서 외부 설정을 불러옴
-  # optional: 을 붙여 Config Server가 실행 중이 아니어도 애플리케이션이 기동되도록 설정
-  config:
-    import: "optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}"
+  profiles:
+    default: dev
 
 server:
   port: 0
+
+---
+spring:
+  config:
+    activate:
+      on-profile: "!test"
+    # 테스트 외 실행에서는 환경변수로 지정한 Config Server를 조회합니다.
+    # Config Server가 없어도 기동할 수 있도록 optional을 유지합니다.
+    import: "optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}"

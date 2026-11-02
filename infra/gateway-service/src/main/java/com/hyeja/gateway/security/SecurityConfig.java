@@ -38,7 +38,6 @@ public class SecurityConfig {
                                 HttpStatus.FORBIDDEN, "COMMON_004", "접근 권한이 없습니다.")))
                 .authorizeExchange(auth -> auth
                         .pathMatchers("/actuator/health", "/actuator/health/**").permitAll()
-                        .pathMatchers("/api/notification/admin/**").hasRole("ADMIN")
                         .pathMatchers(HttpMethod.POST, "/api/policies/sync").hasRole("ADMIN")
                         .pathMatchers(HttpMethod.POST, "/api/members", "/api/members/login",
                                 "/api/members/email-verifications",

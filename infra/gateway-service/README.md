@@ -20,7 +20,7 @@ Spring Cloud Gateway. 프런트는 이 서비스만 호출합니다. 기존 29�
 - JWT 서명 확인과 Redis 로그아웃 블랙리스트 확인 후, 회원 ID·권한을 헤더로 각 서비스에 전달합니다.
 - 로그인 없이 허용: `POST /api/members`, `/api/members/login`, `/api/members/email-verifications/**`, `GET /api/members/find-email`, `/api/regions`, `/api/terms/**`, `/api/policies/housing`, `/api/policies/card-news/guest`, `/api/policies/card-detail/*`, `/api/policies/{policyId}`, `/api/health`
 - 로그인 필요(위 허용 경로보다 우선): `GET /api/policies/search`, `GET /api/policies/card-news`
-- 관리자 전용: `POST /api/policies/sync`, `/api/notification/admin/**`
+- 관리자 전용: `POST /api/policies/sync`
 - 로그인 없이 허용된 경로라도 **잘못된 토큰을 보내면** 지금처럼 오류를 돌려줘야 합니다(정책 상세 등). 각 서비스에서도 필요한 권한을 다시 확인합니다.
 - CORS: `http://localhost:5173` 허용
 
