@@ -40,6 +40,17 @@
 - 정책 상세(로그인)의 자격 판정은 recommendation을 호출하지 않고, 판정 코드(PolicyEligibilityEvaluator 등)를 policy와 recommendation이 같이 씁니다. 판정 규칙의 기준은 recommendation이 갖고, 우선 두 서비스에 같은 코드와 같은 테스트를 둡니다.
 - 지역 데이터는 user_db에도 복사본을 두므로 user가 policy의 지역을 호출하지 않습니다.
 
+## 연결 지점 (먼저 만들어 둔 빈 구현)
+
+수집·조회 쪽과 회원 기능·이벤트 쪽이 서로 기다리지 않도록 아래 두 곳을 먼저 만들어 뒀습니다(11-01 분담 합의).
+
+| 지점 | 쓰는 쪽 | 지금 동작 | 채우는 시점 |
+|---|---|---|---|
+| `PolicyMemberService.getMemberDetail(policy, memberId)` → `PolicyMemberDetailDTO` | 정책 상세 | 하트 false, 판정 없음(비로그인과 같음) | user(F6)·engagement(F4) 연결 |
+| `PolicyChangedPublisher.publish(policyIds)` | 정책 수집 저장 후 | 아무것도 보내지 않음(`NoOpPolicyChangedPublisher`) | `policy-updated` 발행(#9) |
+
+상세 응답의 `isFavorite`·`overallStatus`·`conditions`는 `PolicyMemberDetailDTO` 값을 그대로 옮겨 담으면 됩니다.
+
 ## 로컬 개발 실행
 
 - `application.yml`: 서비스 이름, Config Server 연결, 랜덤 포트 등 공통 설정.
