@@ -2,6 +2,10 @@ spring:
   application:
     name: user-service
 
+  # 프로필을 지정하지 않으면 로컬 개발 설정(H2) 사용
+  profiles:
+    default: dev
+
   # Config Server(8888)에서 외부 설정을 불러옴
   # optional: 을 붙여 Config Server가 실행 중이 아니어도 애플리케이션이 기동되도록 설정
   config:
