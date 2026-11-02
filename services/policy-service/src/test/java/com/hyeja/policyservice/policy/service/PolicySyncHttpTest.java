@@ -8,6 +8,10 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 import com.hyeja.policyservice.global.config.RestTemplateConfig;
 import com.hyeja.policyservice.policy.converter.PolicyApiCodeConverter;
 import com.hyeja.policyservice.policy.dto.PolicyApiResponseDTO.PolicyItem;
+import com.hyeja.policyservice.policy.repository.PolicyRepository;
+import com.hyeja.policyservice.policy.repository.PolicyRegionRepository;
+import com.hyeja.policyservice.term.repository.TermRepository;
+import java.time.Clock;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
@@ -23,7 +27,9 @@ class PolicySyncHttpTest {
         var saver = mock(PolicySyncItemService.class);
         var analysis = mock(PolicyAiAnalysis.class);
         when(analyzer.analyze(any())).thenReturn(analysis);
-        var service = new PolicyService(template, new PolicyApiCodeConverter(), analyzer, saver);
+        var service = new PolicyService(template, new PolicyApiCodeConverter(), analyzer, saver,
+                mock(PolicyRepository.class), mock(PolicyRegionRepository.class),
+                mock(TermRepository.class), Clock.systemUTC(), mock(PolicyMemberService.class));
         ReflectionTestUtils.setField(service, "apiKey", "test-key");
         ReflectionTestUtils.setField(service, "apiUrl", "https://example.com/policies");
         server.expect(requestTo(org.hamcrest.Matchers.startsWith("https://example.com/policies?")))
