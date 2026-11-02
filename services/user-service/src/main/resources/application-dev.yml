@@ -1,5 +1,25 @@
 # 로컬 개발용 H2 (파일 모드: 재시작해도 데이터가 남습니다)
 spring:
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+
   # 어느 DB에 붙을지 설정
   datasource:
     # H2 드라이버 사용
