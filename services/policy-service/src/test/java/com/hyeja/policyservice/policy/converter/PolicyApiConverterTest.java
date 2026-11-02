@@ -240,4 +240,3 @@ class PolicyApiConverterTest {
                 PolicyIncomeCondition.UNKNOWN, null, null).getEmploymentCodes();
     }
 }
-
