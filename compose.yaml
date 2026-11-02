@@ -200,6 +200,18 @@ services:
       SPRING_DATASOURCE_URL: jdbc:mariadb://mariadb:3306/user_db
       SPRING_DATASOURCE_USERNAME: user_app
       SPRING_DATASOURCE_PASSWORD: ${USER_DB_PASSWORD:?Set USER_DB_PASSWORD in .env}
+      # Mail settings in application-dev.yml are not loaded by the docker profile.
+      SPRING_MAIL_HOST: ${MAIL_HOST:-smtp.gmail.com}
+      SPRING_MAIL_PORT: ${MAIL_PORT:-587}
+      SPRING_MAIL_USERNAME: ${MAIL_USERNAME:-}
+      SPRING_MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH: "true"
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE: "true"
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_CONNECTIONTIMEOUT: "5000"
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_TIMEOUT: "5000"
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_WRITETIMEOUT: "5000"
+      # Local Compose readiness must not require external SMTP credentials/connectivity.
+      MANAGEMENT_HEALTH_MAIL_ENABLED: "false"
       MAIL_USERNAME: ${MAIL_USERNAME:-}
       MAIL_PASSWORD: ${MAIL_PASSWORD:-}
     depends_on: *business-dependencies
