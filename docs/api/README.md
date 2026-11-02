@@ -1,16 +1,18 @@
 # 서비스 간 계약
 
+현재 구현된 관심·알림 외부 API와 미구현 연동 범위는 [Engagement API 명세서](engagement-api.md)를 참고합니다.
+
 개발 전에 아래 형식을 먼저 합의합니다. 바뀌면 이 문서부터 고치고, 같은 PR에서 코드를 바꿉니다.
 기준: [MSA 아키텍처 설계서](../architecture/HYEJA_MSA_Architecture_Design.md) + [설계서와 코드 대조 결과](../architecture/설계_코드_대조.md)
 
-## 1. 외부 API (기존 29개, 경로·메서드·응답 유지)
+## 1. 외부 API (기존 계약 기준, 알림 수동 생성 제외)
 
 | 서비스 | 경로 |
 |---|---|
 | user | `POST /api/members`, `POST /api/members/email-verifications`, `POST /api/members/email-verifications/confirmation`, `POST /api/members/login`, `POST /api/members/logout`, `GET /api/members/me`, `GET /api/members/find-email`, `PATCH /api/members/me/delete`, `GET·PATCH /api/members/me/profile` |
 | policy | `GET /api/policies/housing`, `GET /api/policies/housing/me`, `GET /api/policies/{policyId}`, `POST /api/policies/sync`, `GET /api/policies/card-news/guest`, `GET /api/policies/card-news`, `GET /api/policies/card-detail/{policyId}`, `GET /api/regions`, `GET /api/terms`, `GET /api/terms/{termId}` |
 | recommendation | `GET /api/policies/search` |
-| engagement | `GET /api/favorite`, `POST·DELETE /api/favorite/{policyId}`, `GET /api/notification`, `PATCH /api/notification/{notificationId}/read`, `DELETE /api/notification/{notificationId}`, `POST /api/notification/admin/generate` |
+| engagement | `GET /api/favorite`, `POST·DELETE /api/favorite/{policyId}`, `GET /api/notification`, `PATCH /api/notification/{notificationId}/read`, `DELETE /api/notification/{notificationId}` |
 | 공통 | `GET /api/health` (각 서비스) |
 
 Gateway 라우팅과 인증 규칙은 [infra/gateway-service](../../infra/gateway-service/README.md)에 있습니다.

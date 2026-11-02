@@ -97,7 +97,7 @@ class SecurityConfigTest {
     void adminPathsRequireAdminRole() {
         String user = token("USER", Instant.now().plusSeconds(600));
         String admin = token("ADMIN", Instant.now().plusSeconds(600));
-        for (String path : new String[]{"/api/policies/sync", "/api/notification/admin/send"}) {
+        for (String path : new String[]{"/api/policies/sync"}) {
             client.post().uri(path).header("Authorization", "Bearer " + user).exchange()
                     .expectStatus().isForbidden().expectBody().jsonPath("$.code").isEqualTo("COMMON_004");
             client.post().uri(path).header("Authorization", "Bearer " + admin).exchange().expectStatus().isOk();
