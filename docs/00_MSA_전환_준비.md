@@ -86,7 +86,7 @@ LG CNS AM INSPIRE CAMP 6기 · 미니프로젝트 2 · 5조 · 작성일 2026-10
 | PolicyService, PolicySearchService | ProfileService(내 조건), FavoriteRepository(하트 표시), TermRepository 직접 사용 | 내 조건·하트는 Feign 호출, term은 같은 서비스 |
 | CardNewsService | ProfileService, FavoriteRepository 직접 사용 | 내 조건은 member, 관심 여부는 notification에 Feign 호출 |
 | NotificationGenerationService | MemberService, FavoriteRepository 직접 사용 | 관심 정책과 같은 서비스(notification)에 두어 통신 없이 조회. 회원 확인은 이벤트로 받은 탈퇴 정보로 대체 |
-| MemberService.withdraw | FavoriteRepository, NotificationRepository 직접 삭제 | 탈퇴 이벤트를 받아 notification이 정리. 실패 시 보상(Saga) |
+| MemberService.withdraw | FavoriteRepository, NotificationRepository 직접 삭제 | 탈퇴 이벤트를 받아 engagement가 정리. 실패 시 재시도 후 DLT (Saga는 선택, 이슈 #1) |
 | Region | profile FK, policy_region FK, 수집 시 지역 코드 확인 | 바뀌지 않는 기준 데이터. 처리 방식은 강사님 추가 답변 후 확정 (1-7) |
 
 ### 1-5. Kafka와 MSA 구성요소는 어디에 있나
@@ -122,18 +122,18 @@ MSA 구성요소는 **지원님 개인 실습 저장소**에 있습니다. 수�
 
 | 서비스 | 담당 | 테이블(DB) | 맡는 일 |
 |---|---|---|---|
-| user-service | 강태현, 차현준 | member, profile (`user_db`) | 가입·이메일 인증·로그인·JWT, 이메일 찾기, 탈퇴, 내 조건 8개 |
+| user-service | 강태현, 차현준 | member, profile, region 읽기 복사본 (`user_db`) | 가입·이메일 인증·로그인·JWT, 이메일 찾기, 탈퇴, 내 조건 8개 |
 | policy-service | 김예준, 홍준서 | policy, policy_region, region, term, card_news (`policy_db`) | 정책 목록·상세·수집, 지역, 용어, AI 정책 분석·카드뉴스 |
 | engagement-service | 손수연 | favorite, notification, 정책 스냅샷 (`engagement_db`) | 관심 정책, D-7 알림, (승인 시) 웰컴·마감 메일 |
 | recommendation-service | 류지범 | 없음 | 맞춤 검색(`/api/policies/search`), 자격 판정, AI 의도 분석·판정 이유 |
 | Eureka·Config·Gateway·Docker·K8s | 이지원 | - | 인프라 |
 
 - AI는 별도 서비스로 두지 않습니다. 정책 분석·카드뉴스는 policy, 검색·판정 설명은 recommendation에 둡니다(설계서 원칙).
-- 동기(Feign): recommendation→user·policy·engagement, policy→engagement, engagement→policy. **코드 대조로 추가 필요한 호출**: policy→user(내 조건), user→policy(지역), 정책 상세 판정 위치.
-- 비동기(Kafka): `policy-updated`(우선), `member-registered`·`notification-created`(신규 메일, 승인 후), `member-withdrawn`(제안).
+- 동기(Feign): recommendation→user·policy·engagement, policy→engagement, engagement→policy. **코드 대조로 추가 필요한 호출**: policy→user(내 조건). 지역은 user_db 복사본, 정책 상세 판정은 판정 코드를 같이 쓰기로 해 user→policy·policy→recommendation 호출은 두지 않습니다(이슈 #1 확정).
+- 비동기(Kafka): `policy-updated`(우선), `member-withdrawn`(이슈 #1 확정), `notification-created`(마감 알림 메일, 여유 있을 때). `member-registered`(웰컴 메일)는 이번에 하지 않습니다.
 - 상세 계약과 대조 결과는 hyeja-msa 저장소의 `docs/api/README.md`, `docs/architecture/설계_코드_대조.md`에 있습니다.
 
-**핵심 기술 후보**: Kafka 이벤트 동기화(`policy-updated` 멱등성·재시도·DLT, 1차 때 10분 걸리던 수집을 AI 분석과 분리) 또는 Saga(회원 탈퇴 보상).
+**핵심 기술 (이슈 #1 확정)**: Kafka 이벤트 동기화(`policy-updated` 멱등성·재시도·DLT, 1차 때 10분 걸리던 수집을 AI 분석과 분리). Saga(회원 탈퇴 보상)는 여유가 있으면 추가 핵심 기술로 검토합니다.
 
 ### 1-8. 프런트 연동
 

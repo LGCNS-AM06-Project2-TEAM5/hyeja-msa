@@ -35,9 +35,10 @@
 | 사용 → engagement | Feign | 관심 여부 일괄 조회 (목록·상세·카드뉴스의 하트) |
 | 발행 | Kafka `policy-updated` | 수집·변경 후 정책 스냅샷 (engagement 읽기 모델 갱신) |
 
-## 결정 필요
+## 결정된 사항 (#1)
 
-- 정책 상세(로그인)의 자격 판정(PolicyEligibilityEvaluator)을 policy에 둘지, recommendation을 호출할지. 지금 코드는 상세와 검색이 같은 판정 로직을 씁니다.
+- 정책 상세(로그인)의 자격 판정은 recommendation을 호출하지 않고, 판정 코드(PolicyEligibilityEvaluator 등)를 policy와 recommendation이 같이 씁니다. 판정 규칙의 기준은 recommendation이 갖고, 우선 두 서비스에 같은 코드와 같은 테스트를 둡니다.
+- 지역 데이터는 user_db에도 복사본을 두므로 user가 policy의 지역을 호출하지 않습니다.
 
 ## 로컬 개발 실행
 
