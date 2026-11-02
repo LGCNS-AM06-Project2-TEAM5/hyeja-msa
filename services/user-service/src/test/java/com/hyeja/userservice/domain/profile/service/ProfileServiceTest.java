@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.hyeja.userservice.domain.member.entity.Member;
 import com.hyeja.userservice.domain.member.repository.MemberRepository;
+import com.hyeja.userservice.domain.profile.dto.MemberProfileDTO;
 import com.hyeja.userservice.domain.profile.dto.ProfileRequestDTO;
 import com.hyeja.userservice.domain.profile.enums.EmploymentStatus;
 import com.hyeja.userservice.domain.profile.enums.IncomeRange;
@@ -85,5 +86,43 @@ class ProfileServiceTest {
                 .isEqualTo(ErrorStatus.REGION_NOT_FOUND);
 
         assertThat(profileRepository.count()).isZero();
+    }
+
+    @Test
+    @DisplayName("내부 API용 조회는 지역 이름을 region 복사본에서 채워 돌려준다")
+    void getMemberProfile() {
+        profileService.create(member, request("11110"));
+
+        MemberProfileDTO result = profileService.getMemberProfile(member.getMemberId());
+
+        assertThat(result.getMemberId()).isEqualTo(member.getMemberId());
+        assertThat(result.getRegion().getRegionCode()).isEqualTo("11110");
+        assertThat(result.getRegion().getSigunguName()).isEqualTo("서울특별시 종로구");
+        assertThat(result.getIncomeRangeCode()).isEqualTo(IncomeRange.R2000_3000);
+        assertThat(result.getMarriageCode()).isNull();
+    }
+
+    @Test
+    @DisplayName("탈퇴한 회원이면 MEMBER_NOT_FOUND를 던진다")
+    void getMemberProfileOfWithdrawnMember() {
+        profileService.create(member, request("11110"));
+        member.softDelete();
+        memberRepository.flush();
+
+        assertThatThrownBy(() -> profileService.getMemberProfile(member.getMemberId()))
+                .isInstanceOf(GeneralException.class)
+                .extracting("code")
+                .isEqualTo(ErrorStatus.MEMBER_NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("조건을 등록하지 않았으면 PROFILE_NOT_FOUND, 없는 회원이면 MEMBER_NOT_FOUND를 던진다")
+    void getMemberProfileWithoutProfile() {
+        assertThatThrownBy(() -> profileService.getMemberProfile(member.getMemberId()))
+                .extracting("code")
+                .isEqualTo(ErrorStatus.PROFILE_NOT_FOUND);
+        assertThatThrownBy(() -> profileService.getMemberProfile(999L))
+                .extracting("code")
+                .isEqualTo(ErrorStatus.MEMBER_NOT_FOUND);
     }
 }
