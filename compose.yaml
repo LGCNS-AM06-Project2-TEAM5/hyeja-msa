@@ -190,6 +190,7 @@ services:
     environment:
       <<: *business-environment
       SERVER_PORT: "8081"
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
       DB_HOST: mariadb
       DB_PORT: "3306"
       DB_NAME: user_db
@@ -210,6 +211,7 @@ services:
     environment:
       <<: *business-environment
       SERVER_PORT: "8082"
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
       DB_HOST: mariadb
       DB_PORT: "3306"
       DB_NAME: policy_db
@@ -231,6 +233,7 @@ services:
     environment:
       <<: *business-environment
       SERVER_PORT: "8083"
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
       DB_HOST: mariadb
       DB_PORT: "3306"
       DB_NAME: engagement_db
