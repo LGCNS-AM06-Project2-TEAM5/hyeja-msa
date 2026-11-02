@@ -72,5 +72,5 @@ hyeja-msa/
 | 홍준서 | [@jnnxeo](https://github.com/jnnxeo) | Policy |
 | 류지범 | [@JibeomRyu](https://github.com/JibeomRyu) | Recommendation |
 | 강태현 | [@kangtaee](https://github.com/kangtaee) | User |
-| 차현준 | | User |
+| 차현준 | [@deallight](https://github.com/deallight) | User |
 | 손수연 | [@hand-soo](https://github.com/hand-soo) | Engagement |

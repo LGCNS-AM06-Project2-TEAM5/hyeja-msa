@@ -1,4 +1,10 @@
 spring:
+  ai:
+    openai:
+      api-key: test-not-a-real-key
+      chat:
+        options:
+          model: test-model
   cloud:
     config:
       enabled: false
@@ -15,3 +21,8 @@ spring:
 eureka:
   client:
     enabled: false
+
+youth:
+  api:
+    key: test-not-a-real-key
+    url: https://example.com/policies

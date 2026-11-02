@@ -3,6 +3,7 @@ spring:
     name: engagement-service
   profiles:
     default: dev
+
 server:
   port: 0
 
@@ -11,4 +12,6 @@ spring:
   config:
     activate:
       on-profile: "!test"
-    import: optional:configserver:http://localhost:8888
+    # 테스트 외 실행에서는 환경변수로 지정한 Config Server를 조회합니다.
+    # Config Server가 없어도 기동할 수 있도록 optional을 유지합니다.
+    import: "optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}"

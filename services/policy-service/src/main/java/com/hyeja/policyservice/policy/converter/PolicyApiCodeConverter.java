@@ -74,4 +74,3 @@ public class PolicyApiCodeConverter {
         return value.trim().replaceFirst("^0+", "");
     }
 }
-

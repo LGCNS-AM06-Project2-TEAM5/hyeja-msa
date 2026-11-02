@@ -138,4 +138,3 @@ public class PolicyApiConverter {
     private record DateRange(LocalDate start, LocalDate end) {
     }
 }
-

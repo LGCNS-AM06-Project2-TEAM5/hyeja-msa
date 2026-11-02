@@ -1,0 +1,264 @@
+name: hyeja
+
+x-app-environment: &app-environment
+  SPRING_PROFILES_ACTIVE: docker
+  SPRING_CONFIG_IMPORT: configserver:http://config-service:8888
+  CONFIG_SERVER_URL: http://config-service:8888
+  EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-service:8761/eureka/
+  EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
+  MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,info
+  MANAGEMENT_TRACING_SAMPLING_PROBABILITY: "1.0"
+  MANAGEMENT_TRACING_EXPORT_ZIPKIN_ENDPOINT: http://zipkin:9411/api/v2/spans
+  SPRING_DATA_REDIS_HOST: redis
+  SPRING_DATA_REDIS_PORT: "6379"
+  SPRING_DATA_REDIS_DATABASE: "0"
+  REDIS_HOST: redis
+  REDIS_PORT: "6379"
+  REDIS_DATABASE: "0"
+  SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+  SPRING_KAFKA_LISTENER_OBSERVATION_ENABLED: "true"
+  SPRING_KAFKA_TEMPLATE_OBSERVATION_ENABLED: "true"
+  JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=60.0"
+
+x-business-environment: &business-environment
+  <<: *app-environment
+  JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env (at least 32 UTF-8 bytes)}
+
+x-app: &app
+  restart: unless-stopped
+  init: true
+  healthcheck:
+    test: ["CMD-SHELL", "curl --fail --silent http://localhost:$${SERVER_PORT}/actuator/health > /dev/null"]
+    interval: 10s
+    timeout: 5s
+    start_period: 90s
+    retries: 12
+
+x-business-dependencies: &business-dependencies
+  config-service:
+    condition: service_healthy
+  mariadb:
+    condition: service_healthy
+  redis:
+    condition: service_healthy
+  kafka-init:
+    condition: service_completed_successfully
+  zipkin:
+    condition: service_started
+
+services:
+  mariadb:
+    image: mariadb:11.4
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?Set DB_ROOT_PASSWORD in .env}
+      USER_DB_PASSWORD: ${USER_DB_PASSWORD:?Set USER_DB_PASSWORD in .env}
+      POLICY_DB_PASSWORD: ${POLICY_DB_PASSWORD:?Set POLICY_DB_PASSWORD in .env}
+      ENGAGEMENT_DB_PASSWORD: ${ENGAGEMENT_DB_PASSWORD:?Set ENGAGEMENT_DB_PASSWORD in .env}
+    ports:
+      - "127.0.0.1:${MARIADB_HOST_PORT:-13306}:3306"
+    volumes:
+      - mariadb-data:/var/lib/mysql
+      - ./docker/mariadb/01-create-databases.sh:/docker-entrypoint-initdb.d/01-create-databases.sh:ro
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      start_period: 30s
+      retries: 30
+
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "127.0.0.1:${REDIS_HOST_PORT:-16379}:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  kafka:
+    image: apache/kafka:3.9.1
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${KAFKA_HOST_PORT:-19092}:19092"
+    environment:
+      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+      KAFKA_NODE_ID: "1"
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: INTERNAL://:9092,EXTERNAL://:19092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:9092,EXTERNAL://localhost:${KAFKA_HOST_PORT:-19092}
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: "1"
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: "0"
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      KAFKA_HEAP_OPTS: "-Xms256m -Xmx512m"
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --list > /dev/null"]
+      interval: 10s
+      timeout: 10s
+      start_period: 30s
+      retries: 20
+
+  kafka-init:
+    image: apache/kafka:3.9.1
+    restart: "no"
+    depends_on:
+      kafka:
+        condition: service_healthy
+    entrypoint: ["/bin/bash", "-ec"]
+    command:
+      - |
+        for topic in member-registered policy-updated notification-created; do
+          /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic "$$topic" --partitions 1 --replication-factor 1
+        done
+
+  zipkin:
+    image: openzipkin/zipkin:3.5
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${ZIPKIN_HOST_PORT:-9411}:9411"
+
+  discovery-service:
+    <<: *app
+    build:
+      context: .
+      dockerfile: infra/discovery-service/Dockerfile
+    environment:
+      <<: *app-environment
+      SPRING_CONFIG_IMPORT: ""
+      SERVER_PORT: "8761"
+      EUREKA_INSTANCE_HOSTNAME: discovery-service
+    ports:
+      - "127.0.0.1:${DISCOVERY_HOST_PORT:-8761}:8761"
+    depends_on:
+      zipkin:
+        condition: service_started
+
+  config-service:
+    <<: *app
+    build:
+      context: .
+      dockerfile: infra/config-service/Dockerfile
+    environment:
+      <<: *app-environment
+      SPRING_CONFIG_IMPORT: ""
+      SERVER_PORT: "8888"
+      EUREKA_SERVER_URL: http://discovery-service:8761/eureka/
+      SPRING_CLOUD_CONFIG_SERVER_GIT_URI: ${CONFIG_GIT_URI:-https://github.com/LGCNS-AM06-Project2-TEAM5/hyeja-config.git}
+      SPRING_CLOUD_CONFIG_SERVER_GIT_DEFAULT_LABEL: ${CONFIG_GIT_LABEL:-main}
+    ports:
+      - "127.0.0.1:${CONFIG_HOST_PORT:-8888}:8888"
+    depends_on:
+      discovery-service:
+        condition: service_healthy
+
+  gateway-service:
+    <<: *app
+    build:
+      context: .
+      dockerfile: infra/gateway-service/Dockerfile
+    environment:
+      <<: *app-environment
+      SERVER_PORT: "8000"
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env (at least 32 UTF-8 bytes)}
+    ports:
+      - "127.0.0.1:${GATEWAY_HOST_PORT:-8000}:8000"
+    depends_on:
+      config-service:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  user-service:
+    <<: *app
+    build:
+      context: .
+      dockerfile: services/user-service/Dockerfile
+    environment:
+      <<: *business-environment
+      SERVER_PORT: "8081"
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      DB_HOST: mariadb
+      DB_PORT: "3306"
+      DB_NAME: user_db
+      DB_USERNAME: user_app
+      DB_PASSWORD: ${USER_DB_PASSWORD:?Set USER_DB_PASSWORD in .env}
+      SPRING_DATASOURCE_URL: jdbc:mariadb://mariadb:3306/user_db
+      SPRING_DATASOURCE_USERNAME: user_app
+      SPRING_DATASOURCE_PASSWORD: ${USER_DB_PASSWORD:?Set USER_DB_PASSWORD in .env}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+    depends_on: *business-dependencies
+
+  policy-service:
+    <<: *app
+    build:
+      context: .
+      dockerfile: services/policy-service/Dockerfile
+    environment:
+      <<: *business-environment
+      SERVER_PORT: "8082"
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      DB_HOST: mariadb
+      DB_PORT: "3306"
+      DB_NAME: policy_db
+      DB_USERNAME: policy_app
+      DB_PASSWORD: ${POLICY_DB_PASSWORD:?Set POLICY_DB_PASSWORD in .env}
+      SPRING_DATASOURCE_URL: jdbc:mariadb://mariadb:3306/policy_db
+      SPRING_DATASOURCE_USERNAME: policy_app
+      SPRING_DATASOURCE_PASSWORD: ${POLICY_DB_PASSWORD:?Set POLICY_DB_PASSWORD in .env}
+      OPEN_AI_KEY: ${OPEN_AI_KEY:-}
+      OPEN_AI_MODEL: ${OPEN_AI_MODEL:-gpt-4o-mini}
+      YOUTH_API_KEY: ${YOUTH_API_KEY:-}
+    depends_on: *business-dependencies
+
+  engagement-service:
+    <<: *app
+    build:
+      context: .
+      dockerfile: services/engagement-service/Dockerfile
+    environment:
+      <<: *business-environment
+      SERVER_PORT: "8083"
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      DB_HOST: mariadb
+      DB_PORT: "3306"
+      DB_NAME: engagement_db
+      DB_USERNAME: engagement_app
+      DB_PASSWORD: ${ENGAGEMENT_DB_PASSWORD:?Set ENGAGEMENT_DB_PASSWORD in .env}
+      SPRING_DATASOURCE_URL: jdbc:mariadb://mariadb:3306/engagement_db
+      SPRING_DATASOURCE_USERNAME: engagement_app
+      SPRING_DATASOURCE_PASSWORD: ${ENGAGEMENT_DB_PASSWORD:?Set ENGAGEMENT_DB_PASSWORD in .env}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+    depends_on: *business-dependencies
+
+  recommendation-service:
+    <<: *app
+    build:
+      context: .
+      dockerfile: services/recommendation-service/Dockerfile
+    environment:
+      <<: *business-environment
+      SERVER_PORT: "8084"
+      OPEN_AI_KEY: ${OPEN_AI_KEY:-}
+      OPEN_AI_MODEL: ${OPEN_AI_MODEL:-gpt-4o-mini}
+    depends_on: *business-dependencies
+
+volumes:
+  mariadb-data:
+  redis-data:
+  kafka-data:

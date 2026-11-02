@@ -40,6 +40,17 @@
 - 정책 상세(로그인)의 자격 판정은 recommendation을 호출하지 않고, 판정 코드(PolicyEligibilityEvaluator 등)를 policy와 recommendation이 같이 씁니다. 판정 규칙의 기준은 recommendation이 갖고, 우선 두 서비스에 같은 코드와 같은 테스트를 둡니다.
 - 지역 데이터는 user_db에도 복사본을 두므로 user가 policy의 지역을 호출하지 않습니다.
 
+## 연결 지점 (먼저 만들어 둔 빈 구현)
+
+수집·조회 쪽과 회원 기능·이벤트 쪽이 서로 기다리지 않도록 아래 두 곳을 먼저 만들어 뒀습니다(11-01 분담 합의).
+
+| 지점 | 쓰는 쪽 | 지금 동작 | 채우는 시점 |
+|---|---|---|---|
+| `PolicyMemberService.getMemberDetail(policy, memberId)` → `PolicyMemberDetailDTO` | 정책 상세 | 하트 false, 판정 없음(비로그인과 같음) | user(F6)·engagement(F4) 연결 |
+| `PolicyChangedPublisher.publish(policyIds)` | 정책 수집 저장 후 | 아무것도 보내지 않음(`NoOpPolicyChangedPublisher`) | `policy-updated` 발행(#9) |
+
+상세 응답의 `isFavorite`·`overallStatus`·`conditions`는 `PolicyMemberDetailDTO` 값을 그대로 옮겨 담으면 됩니다.
+
 ## 로컬 개발 실행
 
 - `application.yml`: 서비스 이름, Config Server 연결, 랜덤 포트 등 공통 설정.
@@ -72,3 +83,56 @@ DB 기본값은 `jdbc:mariadb://localhost:3307/policy_db`, 사용자명은 `poli
 기본 컨텍스트 테스트는 `@ActiveProfiles("test")`로 테스트 전용 설정을 사용합니다.
 H2 메모리 DB를 사용하고 Config Server·Eureka 연동을 비활성화하므로 로컬 MariaDB 비밀번호가 필요하지 않습니다.
 이 테스트는 컨텍스트 초기화 확인용이며 실제 MariaDB 연결·스키마 호환성은 dev 환경에서 별도로 검증합니다.
+
+## OpenAI 정책 분석
+
+원본 `Hyejabonjuui/backend`의 `3e47bb1` 기준 정책 분석 코드를 이관했습니다.
+`PolicyAiAnalyzer`는 정책 수집용 분석 인터페이스이며 검색·추천 분석은 포함하지 않습니다.
+프롬프트·JSON Schema·카테고리 및 소득 보정·실패 전달 규칙은 기존 코드와 동일합니다.
+
+실행 환경에 다음 변수를 지정합니다. 실제 키를 yml이나 Git에 저장하지 않습니다.
+
+```text
+OPEN_AI_KEY=<본인의 OpenAI API 키>
+OPEN_AI_MODEL=<기존 프로젝트에서 사용하던 모델명>
+```
+
+키와 모델은 애플리케이션 기동에 필요합니다. IntelliJ 실행 설정의 환경변수는 터미널에 자동 전달되지 않습니다.
+기본 `test`는 테스트 전용 가짜 키와 모델 및 모의 클라이언트를 사용하며 외부 API를 호출하지 않습니다.
+SDK에 필요한 Jackson 2 ObjectMapper와 Spring MVC의 Jackson 3 매퍼를 구분해 유지합니다.
+
+실제 호출 검증은 두 환경변수가 설정된 터미널에서 별도로 실행합니다.
+
+```bash
+./gradlew openAiIntegrationTest
+```
+
+이 작업은 샘플 정책 1건을 실제 OpenAI로 분석하므로 비용과 외부 네트워크가 필요합니다.
+키·모델이 없으면 명확한 환경변수 안내와 함께 실패합니다. 매 실행 시 실제 검증하도록 이전 결과를 재사용하지 않습니다.
+성공 시 응답 파싱과 필수 분석 값의 존재를 확인하며, 가변적인 문구 자체를 고정 값과 비교하지 않습니다.
+실제 정책 수집·DB 저장·`/sync` 연결은 후속 작업입니다.
+
+## 정책 수집·동기화 (`POST /api/policies/sync`)
+
+원본 `3e47bb1`의 수집 로직을 이관했습니다. 실행 환경에 `YOUTH_API_KEY`를 추가합니다.
+기본 온통청년 주소는 `https://www.youthcenter.go.kr/go/ythip/getPlcy`입니다.
+OpenAI 분석에는 앞 절의 `OPEN_AI_KEY`·`OPEN_AI_MODEL`도 필요합니다.
+
+- 페이지당 100건, 최대 50페이지를 조회하고 주거·승인 정책만 선별합니다.
+- 페이지 요청이 실패하면 1회 재시도하며, 다시 실패하면 502 `POLICY_002`와 `stoppedPage`, `savedCount`를 반환합니다.
+- 정책별 AI 분석 후 `PolicySyncItemService.save`의 독립 트랜잭션으로 정책·지역·누락 카드뉴스를 저장합니다. 개별 분석·저장 실패는 건너뛰고 다음 정책을 처리합니다.
+- 재수집은 정책과 지역 연결을 갱신하며 기존 카드뉴스는 유지하고 없는 번호만 생성합니다. 지역 코드가 없거나 `00000`이면 전국, 시·도 코드는 기존 시군구로 확장합니다.
+- 성공 응답은 기존 `SUCCESS_001`과 `온통청년 주거 정책 N건 동기화가 완료되었습니다.` 문구를 유지합니다. N은 성공 처리한 항목 수입니다.
+
+Gateway의 `SecurityConfig`는 이 경로를 ADMIN 전용으로 제한하고 `JwtAuthenticationWebFilter`가
+외부 회원 헤더를 제거한 뒤 검증된 `X-Member-Id`, `X-Member-Role`을 설정합니다.
+Policy Controller에서도 양의 회원 ID와 ADMIN 역할을 확인합니다. Policy에는 Security·JWT를 추가하지 않습니다.
+헤더는 Gateway를 신뢰하는 내부 계약이므로 Policy 포트를 외부에 직접 노출하지 않는 배포 구성이 전제입니다.
+PR #37의 공통 회원 헤더 리졸버는 현재 브랜치에 없어 직접 헤더를 읽으며, 반영 후 공통화할 수 있습니다.
+
+카드뉴스 Entity·Repository는 현재 팀원 구현을 사용합니다. `policy-updated` 발행은 아직 연결하지 않았으며
+이벤트 담당자가 `PolicySyncItemService.save`의 저장 트랜잭션과 발행 경계를 맞춰야 합니다.
+현재 코드가 Kafka 동기화까지 보장하는 것은 아닙니다.
+
+자동 테스트는 외부 API·AI를 대체하며, H2에서 재수집·카드 중복 방지·항목 롤백·앞선 커밋 유지까지 확인합니다.
+실제 온통청년·OpenAI 대량 호출, MariaDB 쓰기, Gateway 경유 통합 실행은 별도 검증입니다.

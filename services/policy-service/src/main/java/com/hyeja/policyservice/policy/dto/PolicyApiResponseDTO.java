@@ -63,4 +63,3 @@ public class PolicyApiResponseDTO {
         @JsonProperty("plcyAprvSttsCd") private String approvalStatusCode;
     }
 }
-

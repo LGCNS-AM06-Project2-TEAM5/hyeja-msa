@@ -9,7 +9,11 @@ spring:
   # Config Server(8888)에서 외부 설정을 불러옴
   # optional: 을 붙여 Config Server가 실행 중이 아니어도 애플리케이션이 기동되도록 설정
   config:
-    import: optional:configserver:http://localhost:8888
+    import: "optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}"
 
 server:
   port: 0
+
+# Gateway와 같은 환경변수를 사용합니다. 실제 키는 저장소에 커밋하지 않습니다.
+jwt:
+  secret: ${JWT_SECRET}

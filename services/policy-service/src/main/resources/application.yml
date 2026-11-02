@@ -9,8 +9,20 @@ spring:
   # Config Server(8888)에서 외부 설정을 불러옴
   # optional: Config Server가 실행 중이 아니어도 애플리케이션 기동 가능
   config:
-    import: optional:configserver:http://localhost:8888
+    import: "optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}"
+
+  ai:
+    openai:
+      api-key: ${OPEN_AI_KEY}
+      chat:
+        options:
+          model: ${OPEN_AI_MODEL}
 
 server:
   # 실행 시 사용 가능한 랜덤 포트 자동 할당
   port: 0
+
+youth:
+  api:
+    key: ${YOUTH_API_KEY}
+    url: https://www.youthcenter.go.kr/go/ythip/getPlcy
