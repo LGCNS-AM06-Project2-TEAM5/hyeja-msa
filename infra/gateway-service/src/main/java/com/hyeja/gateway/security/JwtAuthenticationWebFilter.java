@@ -17,10 +17,13 @@ import reactor.core.publisher.Mono;
 final class JwtAuthenticationWebFilter implements WebFilter {
     private final JwtVerifier verifier;
     private final TokenBlacklist blacklist;
+    private final EngagementTokenIssuer engagementTokens;
 
-    JwtAuthenticationWebFilter(JwtVerifier verifier, TokenBlacklist blacklist) {
+    JwtAuthenticationWebFilter(JwtVerifier verifier, TokenBlacklist blacklist,
+                               EngagementTokenIssuer engagementTokens) {
         this.verifier = verifier;
         this.blacklist = blacklist;
+        this.engagementTokens = engagementTokens;
     }
 
     @Override
@@ -32,6 +35,7 @@ final class JwtAuthenticationWebFilter implements WebFilter {
         var clean = exchange.mutate().request(request -> request.headers(headers -> {
             headers.remove("X-Member-Id");
             headers.remove("X-Member-Role");
+            headers.remove(EngagementTokenIssuer.HEADER);
         })).build();
         var headers = clean.getRequest().getHeaders().get(HttpHeaders.AUTHORIZATION);
         if (headers == null) {
@@ -63,6 +67,11 @@ final class JwtAuthenticationWebFilter implements WebFilter {
                     var forwarded = clean.mutate().request(request -> request.headers(h -> {
                         h.set("X-Member-Id", Long.toString(identity.memberId()));
                         h.set("X-Member-Role", identity.role());
+                        String path = clean.getRequest().getPath().pathWithinApplication().value();
+                        if (path.equals("/api/favorite") || path.startsWith("/api/favorite/")
+                                || path.equals("/api/notification") || path.startsWith("/api/notification/")) {
+                            h.set(EngagementTokenIssuer.HEADER, engagementTokens.issue(identity.memberId()));
+                        }
                     })).build();
                     return chain.filter(forwarded)
                             .contextWrite(ReactiveSecurityContextHolder.withAuthentication(authentication));

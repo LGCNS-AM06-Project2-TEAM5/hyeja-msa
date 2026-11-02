@@ -45,3 +45,6 @@ spring:
 # User 서비스와 동일한 키 및 Redis 인스턴스/DB를 사용합니다.
 jwt:
   secret: ${JWT_SECRET}
+
+internal-auth:
+  secret: ${GATEWAY_ENGAGEMENT_SECRET}
