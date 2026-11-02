@@ -4,8 +4,8 @@ name: CI
 # develop·main에 들어간 커밋은 모든 서비스를 빌드합니다.
 
 on:
+  # 앞 PR 브랜치 위에 쌓아 올린 PR(base가 develop이 아닌 PR)도 검사하도록 base 브랜치를 제한하지 않습니다.
   pull_request:
-    branches: [develop, main]
   push:
     branches: [develop, main]
   workflow_dispatch:

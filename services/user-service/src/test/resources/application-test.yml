@@ -1,0 +1,22 @@
+spring:
+  # Config Server(8888)에 접속하지 않음
+  cloud:
+    config:
+      enabled: false
+
+  datasource:
+    driver-class-name: org.h2.Driver
+    url: jdbc:h2:mem:user-test;MODE=MariaDB;DB_CLOSE_DELAY=-1
+    username: sa
+    # 빈 문자열 명시
+    password: ""
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+
+# Eureka(8761)에 등록하지 않음
+eureka:
+  client:
+    enabled: false

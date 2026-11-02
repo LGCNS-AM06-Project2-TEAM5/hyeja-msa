@@ -24,4 +24,5 @@
 | 사용 → user | Feign | 내 조건 조회 |
 | 사용 → policy | Feign | 정책 후보 일괄 조회 (지금 코드는 PolicyRepository.searchActivePolicies 직접 호출) |
 | 사용 → engagement | Feign | 관심 여부 일괄 조회 |
+| 공유 코드 | 자격 판정 | 판정 코드(PolicyEligibilityEvaluator 등)를 policy의 정책 상세와 같이 씁니다. 판정 규칙의 기준은 recommendation이 갖습니다 (#1 확정) |
 | 외부 | OpenAI | 의도 분류·판정 이유. 실패 시 기존 기본 동작 유지 (Circuit Breaker 대체 응답) |

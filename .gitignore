@@ -25,3 +25,4 @@ HELP.md
 !.env.example
 *.log
 tmp/
+/data/
