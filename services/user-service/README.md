@@ -32,9 +32,10 @@
 | 제공 → recommendation, policy | Feign `GET /internal/members/{memberId}/profile` | 회원의 내 조건 조회 (생년월일, 거주지 코드·시군구 이름, 취업 상태, 무주택, 혼인, 소득 구간, 학력, 주거 형태). 응답·오류는 [서비스 간 계약](../../docs/api/README.md#f1f6-회원-조건-조회-user-제공) |
 | 지역 복사본 | user_db `region` | 거주지 코드 검증과 시군구 이름. 원본은 policy와 같은 `region_sigungu.csv`이고, user_db `region`은 기동 때 이 파일로 적재하는 읽기 전용 복사본입니다. CSV가 바뀌면 두 서비스가 다시 기동해 맞춥니다. policy는 호출하지 않습니다 (#1 확정) |
 | 발행 | Kafka `member-registered` | 웰컴 메일용. 이번에 하지 않음 (#1 확정) |
-| 발행 | Kafka `member-withdrawn` | 탈퇴 커밋 후 발행. engagement의 관심 정책·알림 정리 (지금 코드는 한 트랜잭션에서 직접 삭제). Saga는 선택 (#1 확정) |
+| 발행 | Kafka `member-withdrawn` | 탈퇴 트랜잭션에 `member_outbox` 행을 함께 기록합니다. 후속 Relay가 Kafka로 보내면 engagement가 관심 정책·알림을 정리합니다. Saga는 선택 (#1 확정) |
 
 ## 바뀌는 점
 
 - profile → region FK를 지우고 `region_code` 값만 저장합니다.
 - 탈퇴 시 favorite·notification을 직접 지우지 않습니다.
+- 탈퇴 이벤트는 Member·Profile 변경과 같은 트랜잭션에 Outbox로 기록해 누락을 방지합니다.
