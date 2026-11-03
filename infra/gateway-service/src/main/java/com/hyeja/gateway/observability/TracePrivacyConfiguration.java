@@ -13,6 +13,8 @@ public class TracePrivacyConfiguration {
         return context -> {
             context.removeHighCardinalityKeyValue("http.url");
             context.removeHighCardinalityKeyValue("http.target");
+            context.removeHighCardinalityKeyValue("http.uri");
+            context.removeLowCardinalityKeyValue("http.uri");
             context.removeHighCardinalityKeyValue("url.full");
             return context;
         };
