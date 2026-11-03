@@ -14,7 +14,7 @@ import org.springframework.stereotype.Component;
 // user-service 응답을 policy 오류 코드로 바꿉니다.
 // 탈퇴·없는 회원(MEMBER_001), 조건 없음(PROFILE_001)은 1차 ProfileService.getActiveProfile과 같은 코드로 그대로 돌려주고,
 // 그 밖의 실패(연결 실패, 시간 초과, 5xx)는 USER_SERVICE_UNAVAILABLE로 바꿉니다.
-// 비로그인 응답으로 대신할지는 부르는 쪽이 정합니다(상세는 대신하고, /housing/me·회원 카드뉴스는 실패 안내).
+// 비로그인 응답으로 대신할지는 부르는 쪽이 정합니다. 지금은 상세·/housing/me·회원 카드뉴스 모두 비로그인 응답으로 대신합니다.
 @Slf4j
 @Component
 @RequiredArgsConstructor

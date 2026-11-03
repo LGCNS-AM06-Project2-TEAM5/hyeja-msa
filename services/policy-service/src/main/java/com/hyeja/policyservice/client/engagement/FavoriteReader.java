@@ -35,12 +35,13 @@ public class FavoriteReader {
             try {
                 response = engagementClient.findActivePolicyIds(new ActivePolicyIdsRequest(memberId, chunk));
             } catch (FeignException e) {
-                log.warn("관심 여부를 불러오지 못해 하트 없이 응답합니다. memberId={}, status={}, message={}",
-                        memberId, e.status(), e.getMessage());
+                // Feign 메시지에는 응답 본문이 섞일 수 있어 상태 코드와 오류 종류만 남깁니다.
+                log.warn("관심 여부를 불러오지 못해 하트 없이 응답합니다. status={}, errorType={}",
+                        e.status(), e.getClass().getSimpleName());
                 return Set.of();
             }
             if (response == null || !Boolean.TRUE.equals(response.isSuccess()) || response.result() == null) {
-                log.warn("관심 여부 응답이 비어 하트 없이 응답합니다. memberId={}", memberId);
+                log.warn("관심 여부 응답이 비어 하트 없이 응답합니다.");
                 return Set.of();
             }
             favorites.addAll(response.result());
