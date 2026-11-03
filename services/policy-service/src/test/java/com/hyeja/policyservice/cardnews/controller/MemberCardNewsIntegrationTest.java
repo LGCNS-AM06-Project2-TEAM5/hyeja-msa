@@ -25,7 +25,10 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.Set;
+import java.util.ArrayList;
+import java.util.List;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,15 +42,14 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.transaction.annotation.Transactional;
 
 // 로그인 회원 홈 카드뉴스: 헤더 → user(F6) Feign → 회원 지역 쿼리까지 실제로 이어지는지 봅니다.
+// 회원 카드뉴스는 user를 기다리는 동안 트랜잭션 밖에서 조회하므로, 테스트 데이터는 커밋하고 끝나면 직접 지웁니다.
 // 회원은 마포구(11440). 마포구 정책·서울 전체(11000) 정책·전국 정책은 나오고, 부산 정책은 빠져야 합니다.
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @Import(MemberCardNewsIntegrationTest.FixedClock.class)
-@Transactional
 class MemberCardNewsIntegrationTest {
 
     private static final HttpServer USER_SERVICE = startUserService();
@@ -69,11 +71,24 @@ class MemberCardNewsIntegrationTest {
         USER_SERVICE.stop(0);
     }
 
+    private final List<CardNews> savedCards = new ArrayList<>();
+    private final List<PolicyRegion> savedLinks = new ArrayList<>();
+    private final List<Policy> savedPolicies = new ArrayList<>();
+    private final List<Region> savedRegions = new ArrayList<>();
+
+    @AfterEach
+    void cleanUp() {
+        cards.deleteAll(savedCards);
+        links.deleteAll(savedLinks);
+        policies.deleteAll(savedPolicies);
+        regions.deleteAll(savedRegions);
+    }
+
     @BeforeEach
     void setUp() {
-        Region mapo = regions.save(Region.builder().regionCode("11440").sigunguName("서울특별시 마포구").build());
-        Region seoul = regions.save(Region.builder().regionCode("11000").sigunguName("서울특별시").build());
-        Region busan = regions.save(Region.builder().regionCode("26110").sigunguName("부산광역시 중구").build());
+        Region mapo = region(Region.builder().regionCode("11440").sigunguName("서울특별시 마포구").build());
+        Region seoul = region(Region.builder().regionCode("11000").sigunguName("서울특별시").build());
+        Region busan = region(Region.builder().regionCode("26110").sigunguName("부산광역시 중구").build());
         withCard(policy("card-mapo", LocalDate.of(2026, 10, 1)), mapo);
         withCard(policy("card-seoul", LocalDate.of(2026, 10, 2)), seoul);
         withCard(policy("card-busan", LocalDate.of(2026, 10, 3)), busan);
@@ -106,19 +121,31 @@ class MemberCardNewsIntegrationTest {
                 .andExpect(jsonPath("$.result[2].policyId").value("card-busan"));
     }
 
+    private Region region(Region region) {
+        Region saved = regions.save(region);
+        savedRegions.add(saved);
+        return saved;
+    }
+
     private Policy policy(String id, LocalDate applyEndDate) {
-        return policies.save(Policy.builder().policyId(id).policyName(id).description(id + " 설명")
+        return saved(policies.save(Policy.builder().policyId(id).policyName(id).description(id + " 설명")
                 .categories(Set.of(PolicyCategory.MONTHLY_RENT)).ageLimitYn(false)
                 .applyPeriodCode(PolicyApplyPeriod.SPECIFIC_PERIOD)
                 .applyStartDate(LocalDate.of(2026, 9, 1)).applyEndDate(applyEndDate)
-                .activeYn(true).viewCount(0).build());
+                .activeYn(true).viewCount(0).build()));
+    }
+
+    private Policy saved(Policy policy) {
+        savedPolicies.add(policy);
+        return policy;
     }
 
     private void withCard(Policy policy, Region region) {
         if (region != null) {
-            links.save(PolicyRegion.builder().policy(policy).region(region).build());
+            savedLinks.add(links.save(PolicyRegion.builder().policy(policy).region(region).build()));
         }
-        cards.save(CardNews.builder().policy(policy).cardNo(1L).title(policy.getPolicyName()).body("본문").build());
+        savedCards.add(cards.save(
+                CardNews.builder().policy(policy).cardNo(1L).title(policy.getPolicyName()).body("본문").build()));
     }
 
     private static HttpServer startUserService() {

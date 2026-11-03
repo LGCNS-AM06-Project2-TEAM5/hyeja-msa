@@ -22,6 +22,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
@@ -50,6 +51,8 @@ public class CardNewsService {
                 .toList();
     }
 
+    // user(F6) 응답을 기다리는 동안 DB 커넥션을 잡지 않도록 트랜잭션 밖에서 부릅니다. 두 홈 쿼리는 policy를 join fetch합니다.
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public List<MemberCardNewsResponseDTO> getMemberCardNews(Long memberId) {
         // 정책 목록·상세와 같은 기준으로, 탈퇴 회원은 MEMBER_001, 조건이 없거나 삭제됐으면 PROFILE_001입니다.
         // user가 응답하지 않으면(F6 계약의 장애 시 동작) 비로그인 홈 카드뉴스로 대신합니다.
