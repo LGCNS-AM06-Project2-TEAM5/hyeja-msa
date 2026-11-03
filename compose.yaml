@@ -133,7 +133,7 @@ services:
     entrypoint: ["/bin/bash", "-ec"]
     command:
       - |
-        for topic in member-registered policy-updated policy-updated-dlt notification-created member-withdrawn hyeja-config-bus; do
+        for topic in member-registered policy-updated policy-updated-dlt notification-created member-withdrawn member-withdrawn-dlt hyeja-config-bus; do
           /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic "$$topic" --partitions 1 --replication-factor 1
         done
 
