@@ -11,6 +11,21 @@ spring:
           auto-create-topics: false
     config:
       uri: ${CONFIG_SERVER_URL:https://localhost:8888}
+  mail:
+    host: ${SPRING_MAIL_HOST:smtp.gmail.com}
+    port: ${SPRING_MAIL_PORT:587}
+    username: ${SPRING_MAIL_USERNAME:}
+    password: ${SPRING_MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
   application:
     name: engagement-service
   profiles:
@@ -21,6 +36,10 @@ server:
 
 internal-auth:
   secret: ${GATEWAY_ENGAGEMENT_SECRET}
+
+admin:
+  email: ${ADMIN_ALERT_EMAIL:admin-alerts@hyeja.com}
+  dlt-threshold: ${ADMIN_DLT_THRESHOLD:3}
 
 ---
 spring:
