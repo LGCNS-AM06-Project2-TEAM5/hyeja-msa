@@ -1,5 +1,9 @@
 package com.hyeja.engagementservice.security;
 
+import com.hyeja.engagementservice.client.policy.PolicyClient;
+import com.hyeja.engagementservice.client.policy.dto.PolicyApiResponse;
+import com.hyeja.engagementservice.client.policy.dto.PolicySnapshotDTO;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import com.hyeja.engagementservice.notification.service.NotificationGenerationService;
 import com.hyeja.engagementservice.policy.entity.Policy;
 import com.hyeja.engagementservice.policy.enums.*;
@@ -24,6 +28,7 @@ class GatewayAuthenticationTest {
     @Autowired WebApplicationContext context;
     @Autowired PolicyRepository policies;
     @Autowired NotificationGenerationService generation;
+    @MockitoBean PolicyClient policyClient;
     MockMvc mvc;
 
     @BeforeEach void setup() { mvc = webAppContextSetup(context).apply(springSecurity()).build(); }
@@ -66,6 +71,10 @@ class GatewayAuthenticationTest {
         p.setApplyPeriodCode(PolicyApplyPeriod.SPECIFIC_PERIOD);
         LocalDate today = LocalDate.of(2026, 11, 2);
         p.setApplyEndDate(today.plusDays(7)); policies.saveAndFlush(p);
+        org.mockito.Mockito.when(policyClient.getPolicy("AUTH-POLICY")).thenReturn(new PolicyApiResponse<>(
+                true, "SUCCESS_001", "성공", new PolicySnapshotDTO(p.getPolicyId(), p.getPolicyName(),
+                p.getCategories(), p.getSupportContent(), p.getApplyEndDate(),
+                p.getApplyPeriodCode(), p.getApplyUrl(), true, false)));
         mvc.perform(post("/api/favorite/AUTH-POLICY").header("X-Gateway-Assertion", valid(1))
                         .header("X-Member-Id", "2")).andExpect(status().isOk());
         mvc.perform(get("/api/favorite").header("X-Gateway-Assertion", valid(1)).header("X-Member-Id", "2"))

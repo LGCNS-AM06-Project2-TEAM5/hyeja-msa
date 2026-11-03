@@ -1,5 +1,11 @@
 spring:
   cloud:
+    openfeign:
+      client:
+        config:
+          policy-service:
+            connect-timeout: ${POLICY_CONNECT_TIMEOUT_MS:1000}
+            read-timeout: ${POLICY_READ_TIMEOUT_MS:2000}
     bus:
       enabled: true
       destination: hyeja-config-bus

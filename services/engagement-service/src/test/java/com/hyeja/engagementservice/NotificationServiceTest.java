@@ -1,6 +1,10 @@
 package com.hyeja.engagementservice;
 
 import com.hyeja.engagementservice.favorite.service.FavoriteService;
+import com.hyeja.engagementservice.client.policy.PolicyClient;
+import com.hyeja.engagementservice.client.policy.dto.PolicyApiResponse;
+import com.hyeja.engagementservice.client.policy.dto.PolicySnapshotDTO;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import com.hyeja.engagementservice.notification.service.*;
 import com.hyeja.engagementservice.policy.entity.Policy;
 import com.hyeja.engagementservice.policy.enums.*;
@@ -18,6 +22,7 @@ import static org.assertj.core.api.Assertions.*;
 @SpringBootTest @ActiveProfiles("test") @Transactional
 class NotificationServiceTest {
     @Autowired FavoriteService favorites;
+    @MockitoBean PolicyClient policyClient;
     @Autowired NotificationService notifications;
     @Autowired NotificationGenerationService generation;
     @Autowired PolicyRepository policies;
@@ -31,6 +36,10 @@ class NotificationServiceTest {
         policy.setSupportContent("지원 내용"); policy.setApplyEndDate(today.plusDays(7));
         policy.setApplyPeriodCode(PolicyApplyPeriod.SPECIFIC_PERIOD); policy.setActiveYn(true);
         policies.saveAndFlush(policy);
+        org.mockito.Mockito.when(policyClient.getPolicy("P1")).thenReturn(new PolicyApiResponse<>(
+                true, "SUCCESS_001", "성공", new PolicySnapshotDTO("P1", policy.getPolicyName(),
+                policy.getCategories(), policy.getSupportContent(), policy.getApplyEndDate(),
+                policy.getApplyPeriodCode(), policy.getApplyUrl(), true, false)));
     }
 
     @Test void deadlineIdempotencyOwnershipAndReadCount() {
