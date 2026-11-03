@@ -7,6 +7,7 @@ import static org.mockito.Mockito.*;
 
 import com.hyeja.policyservice.cardnews.entity.CardNews;
 import com.hyeja.policyservice.cardnews.repository.CardNewsRepository;
+import com.hyeja.policyservice.event.PolicyChangedPublisher;
 import com.hyeja.policyservice.global.exception.GeneralException;
 import com.hyeja.policyservice.policy.dto.PolicyApiResponseDTO;
 import com.hyeja.policyservice.policy.dto.PolicyApiResponseDTO.PolicyItem;
@@ -41,6 +42,7 @@ class PolicySyncPersistenceTest {
     @MockitoSpyBean private CardNewsRepository cards;
     @MockitoBean private RestTemplate restTemplate;
     @MockitoBean private PolicyAiAnalyzer analyzer;
+    @MockitoBean private PolicyChangedPublisher policyChangedPublisher;
 
     @BeforeEach
     void setUp() {
@@ -74,6 +76,7 @@ class PolicySyncPersistenceTest {
         assertThat(links.findAllByPolicy_PolicyId("sync-1"))
                 .extracting(value -> value.getId().getRegionCode()).containsExactly("11680");
         assertThat(cards.count()).isEqualTo(4);
+        verify(policyChangedPublisher, times(3)).publish(List.of("sync-1"));
     }
 
     @Test
@@ -90,6 +93,7 @@ class PolicySyncPersistenceTest {
         assertThat(policies.existsById("committed")).isTrue();
         assertThat(links.count()).isEqualTo(1);
         assertThat(cards.count()).isEqualTo(4);
+        verify(policyChangedPublisher).publish(List.of("committed"));
     }
 
     @Test
@@ -106,6 +110,43 @@ class PolicySyncPersistenceTest {
         assertThat(policies.existsById("success")).isTrue();
         assertThat(links.count()).isEqualTo(1);
         assertThat(cards.count()).isEqualTo(4);
+        verify(policyChangedPublisher, never()).publish(List.of("failed"));
+        verify(policyChangedPublisher).publish(List.of("success"));
+    }
+
+    @Test
+    void failedPublishRollsBackOnlyThatItemAndCollectionContinues() {
+        doThrow(new IllegalStateException("simulated outbox storage failure"))
+                .when(policyChangedPublisher).publish(List.of("failed"));
+        when(restTemplate.getForObject(any(URI.class), eq(PolicyApiResponseDTO.class)))
+                .thenReturn(page(3, item("before", "11110"), item("failed", "11110"),
+                        item("after", "11680")));
+        when(analyzer.analyze(any())).thenReturn(analysis());
+
+        assertThat(service.fetchAndSaveHousingPolicies()).isEqualTo(2);
+        assertThat(policies.existsById("before")).isTrue();
+        assertThat(policies.existsById("failed")).isFalse();
+        assertThat(policies.existsById("after")).isTrue();
+        assertThat(links.count()).isEqualTo(2);
+        assertThat(cards.count()).isEqualTo(8);
+        assertThat(links.findAllByPolicy_PolicyId("failed")).isEmpty();
+        assertThat(cards.findAll()).extracting(card -> card.getPolicy().getPolicyId())
+                .containsOnly("before", "after");
+        verify(policyChangedPublisher).publish(List.of("before"));
+        verify(policyChangedPublisher).publish(List.of("failed"));
+        verify(policyChangedPublisher).publish(List.of("after"));
+    }
+
+    @Test
+    void unresolvedRegionsPreventSaveAndPublish() {
+        PolicyItem invalid = item("invalid", "99999");
+
+        assertThatThrownBy(() -> itemService.save(invalid, analysis()))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        assertThat(policies.count()).isZero();
+        assertThat(cards.count()).isZero();
+        verifyNoInteractions(policyChangedPublisher);
     }
 
     private PolicyItem item(String id, String regionCodes) {

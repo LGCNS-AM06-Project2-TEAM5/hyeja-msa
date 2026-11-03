@@ -141,9 +141,12 @@ Policy Controller에서도 양의 회원 ID와 ADMIN 역할을 확인합니다. 
 헤더는 Gateway를 신뢰하는 내부 계약이므로 Policy 포트를 외부에 직접 노출하지 않는 배포 구성이 전제입니다.
 PR #37의 공통 회원 헤더 리졸버는 현재 브랜치에 없어 직접 헤더를 읽으며, 반영 후 공통화할 수 있습니다.
 
-카드뉴스 Entity·Repository는 현재 팀원 구현을 사용합니다. `policy-updated` 발행은 아직 연결하지 않았으며
-이벤트 담당자가 `PolicySyncItemService.save`의 저장 트랜잭션과 발행 경계를 맞춰야 합니다.
-현재 코드가 Kafka 동기화까지 보장하는 것은 아닙니다.
+정책·지역·누락 카드뉴스를 모두 저장한 뒤, 같은 항목 트랜잭션 안에서
+`PolicyChangedPublisher.publish(List.of(policy.getPolicyId()))`를 호출합니다.
+발행기가 예외를 던지면 해당 항목의 저장은 롤백되고, 앞서 성공한 항목은 유지하며 다음 항목을 처리합니다.
+재수집도 저장에 성공할 때마다 발행기를 호출합니다.
+현재 브랜치의 발행기는 `NoOpPolicyChangedPublisher`이므로 Kafka에는 전송하지 않습니다.
+Outbox 구현(#82)·Relay(#83)과 통합한 뒤 실제 Kafka 전송은 별도로 검증해야 합니다.
 
 자동 테스트는 외부 API·AI를 대체하며, H2에서 재수집·카드 중복 방지·항목 롤백·앞선 커밋 유지까지 확인합니다.
 실제 온통청년·OpenAI 대량 호출, MariaDB 쓰기, Gateway 경유 통합 실행은 별도 검증입니다.
