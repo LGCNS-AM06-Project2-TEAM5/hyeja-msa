@@ -55,7 +55,7 @@
 
 | 호출 | 클라이언트 | 실패할 때 |
 |---|---|---|
-| F6 회원 조건 (→ user `GET /internal/members/{memberId}/profile`) | `UserClient`는 직접 쓰지 않고 `MemberProfileReader.getActiveProfile`을 씁니다 | `MEMBER_001`·`PROFILE_001`은 그대로 돌려주고, 연결 실패·시간 초과·5xx는 503 `SERVER_002`. 정책 상세는 이 경우 비로그인 응답으로 대신합니다 |
+| F6 회원 조건 (→ user `GET /internal/members/{memberId}/profile`) | `UserClient`는 직접 쓰지 않고 `MemberProfileReader.getActiveProfile`을 씁니다 | `MEMBER_001`·`PROFILE_001`은 그대로 돌려주고, 연결 실패·시간 초과·5xx는 503 `SERVER_002`. 정책 상세와 회원 카드뉴스(`GET /api/policies/card-news`)는 이 경우 비로그인 응답으로 대신합니다 |
 
 시간 제한은 `application.yml`의 `spring.cloud.openfeign.client.config.default`(연결 1초, 응답 2초)입니다. 서비스 주소는 Eureka에서 찾습니다.
 
