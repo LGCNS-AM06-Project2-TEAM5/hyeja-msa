@@ -37,6 +37,8 @@ Gateway 라우팅과 인증 규칙은 [infra/gateway-service](../../infra/gatewa
 
 규칙: 한 요청 안에서 A→B→A로 되돌아오는 호출은 만들지 않습니다. 여러 건은 반드시 일괄 조회로 한 번에 가져옵니다.
 
+인증(11-03 팀 결정): 부르는 쪽은 모든 내부 요청에 `X-Internal-Token` 헤더를 붙이고, 받는 쪽은 `/internal/**`에서 값이 공유 비밀값(`hyeja.internal.token`, Config Server에 `{cipher}`로 보관)과 같은지만 확인합니다. 없거나 다르면 401 `COMMON_002`입니다.
+
 ### F1·F6 회원 조건 조회 (user 제공)
 
 `GET /internal/members/{memberId}/profile`

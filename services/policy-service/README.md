@@ -61,6 +61,8 @@
 
 시간 제한은 `application.yml`의 `spring.cloud.openfeign.client.config.default`(연결 1초, 응답 2초)입니다. 서비스 주소는 Eureka에서 찾습니다.
 
+서비스끼리는 `X-Internal-Token` 헤더로 서로 확인합니다(11-03 팀 결정). 값은 Config Server의 `hyeja.internal.token`이고, 테스트는 `application-test.yml`의 가짜 값을 씁니다. policy가 부르는 Feign 요청에는 `InternalTokenFeignInterceptor`가 헤더를 붙이고, policy의 `/internal/**`(F2·F5)는 `InternalTokenFilter`가 값이 없거나 다르면 401 `COMMON_002`로 막습니다. 값이 설정되지 않으면 내부 API를 모두 막으니 로컬에서 F2·F5를 부르려면 `HYEJA_INTERNAL_TOKEN` 환경 변수를 주면 됩니다.
+
 ## 로컬 개발 실행
 
 - `application.yml`: 서비스 이름, Config Server 연결, 랜덤 포트 등 공통 설정.
