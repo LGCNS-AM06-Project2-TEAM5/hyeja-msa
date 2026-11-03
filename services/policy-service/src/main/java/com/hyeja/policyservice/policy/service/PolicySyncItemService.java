@@ -2,6 +2,7 @@ package com.hyeja.policyservice.policy.service;
 
 import com.hyeja.policyservice.cardnews.entity.CardNews;
 import com.hyeja.policyservice.cardnews.repository.CardNewsRepository;
+import com.hyeja.policyservice.event.PolicyChangedPublisher;
 import com.hyeja.policyservice.policy.converter.PolicyApiConverter;
 import com.hyeja.policyservice.policy.dto.PolicyApiResponseDTO.PolicyItem;
 import com.hyeja.policyservice.policy.entity.Policy;
@@ -35,6 +36,7 @@ public class PolicySyncItemService {
     private final PolicyApiConverter policyApiConverter;
     private final PolicyRegionRepository policyRegionRepository;
     private final RegionRepository regionRepository;
+    private final PolicyChangedPublisher policyChangedPublisher;
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void save(PolicyItem item, PolicyAiAnalysis analysis) {
@@ -44,6 +46,7 @@ public class PolicySyncItemService {
                 analysis.incomeCondition(), analysis.incomeMin(), analysis.incomeMax()));
         replacePolicyRegions(policy, regions);
         createMissingCardNews(policy, analysis);
+        policyChangedPublisher.publish(List.of(policy.getPolicyId()));
     }
 
     // zipCd의 지역 코드를 전부 저장합니다. 지역이 하나도 없으면(또는 00000) 전국 정책입니다.
