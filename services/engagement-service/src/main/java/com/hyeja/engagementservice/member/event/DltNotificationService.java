@@ -8,6 +8,7 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 @Slf4j
 @Service
@@ -15,7 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class DltNotificationService {
     private final JavaMailSender mailSender;
     private final DltAlertStateRepository stateRepository;
-    @Value("${admin.email:admin-alerts@hyeja.com}")
+    @Value("${admin.email:}")
     private String adminEmail;
     @Value("${admin.dlt-threshold:3}")
     private int dltThreshold;
@@ -40,6 +41,11 @@ public class DltNotificationService {
     }
 
     private void trySend(DltAlertState state) {
+        if (!StringUtils.hasText(adminEmail)) {
+            log.debug("DLT 관리자 이메일이 설정되지 않아 발송을 건너뜁니다. topic={}", state.getDltTopic());
+            return;
+        }
+
         try {
             SimpleMailMessage message = new SimpleMailMessage();
             message.setTo(adminEmail);

@@ -7,6 +7,7 @@ import com.hyeja.engagementservice.favorite.entity.Favorite;
 import com.hyeja.engagementservice.favorite.repository.FavoriteRepository;
 import com.hyeja.engagementservice.member.event.FailedMemberEventRepository;
 import com.hyeja.engagementservice.member.event.MemberEventKafkaConfig;
+import com.hyeja.engagementservice.member.event.ProcessedMemberEventRepository;
 import com.hyeja.engagementservice.notification.entity.Notification;
 import com.hyeja.engagementservice.notification.repository.NotificationRepository;
 import com.hyeja.engagementservice.policy.entity.Policy;
@@ -36,12 +37,14 @@ class MemberWithdrawnKafkaIntegrationTest {
     @Autowired NotificationRepository notifications;
     @Autowired PolicyRepository policies;
     @Autowired FailedMemberEventRepository failedEvents;
+    @Autowired ProcessedMemberEventRepository processedEvents;
 
     @AfterEach
     void cleanUp() {
         notifications.deleteAll();
         favorites.deleteAll();
         failedEvents.deleteAll();
+        processedEvents.deleteAll();
         policies.deleteAll();
     }
 
@@ -72,8 +75,12 @@ class MemberWithdrawnKafkaIntegrationTest {
         producer.send(MemberEventKafkaConfig.TOPIC, "3", event("withdraw-3", 3L));
         producer.send(MemberEventKafkaConfig.TOPIC, "3", event("withdraw-3", 3L));
 
-        await().atMost(Duration.ofSeconds(20))
-                .untilAsserted(() -> assertThat(favorites.findAll()).isEmpty());
+        await().during(Duration.ofSeconds(2)).atMost(Duration.ofSeconds(20))
+                .untilAsserted(() -> {
+                    assertThat(favorites.findAll()).isEmpty();
+                    assertThat(processedEvents.count()).isOne();
+                    assertThat(processedEvents.findById("withdraw-3")).isPresent();
+                });
         assertThat(failedEvents.count()).isZero();
     }
 

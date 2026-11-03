@@ -38,7 +38,7 @@ internal-auth:
   secret: ${GATEWAY_ENGAGEMENT_SECRET}
 
 admin:
-  email: ${ADMIN_ALERT_EMAIL:admin-alerts@hyeja.com}
+  email: ${ADMIN_ALERT_EMAIL:}
   dlt-threshold: ${ADMIN_DLT_THRESHOLD:3}
   dlt-retry-interval-ms: ${ADMIN_DLT_RETRY_INTERVAL_MS:60000}
 
