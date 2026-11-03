@@ -40,6 +40,7 @@ internal-auth:
 admin:
   email: ${ADMIN_ALERT_EMAIL:admin-alerts@hyeja.com}
   dlt-threshold: ${ADMIN_DLT_THRESHOLD:3}
+  dlt-retry-interval-ms: ${ADMIN_DLT_RETRY_INTERVAL_MS:60000}
 
 ---
 spring:
