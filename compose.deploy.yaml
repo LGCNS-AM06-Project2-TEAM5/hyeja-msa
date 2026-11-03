@@ -1,0 +1,18 @@
+# GHCR에 올라간 이미지로 실행할 때 compose.yaml 위에 덮어쓰는 파일입니다.
+# 사용: docker compose -f compose.yaml -f compose.deploy.yaml up -d
+# IMAGE_TAG를 커밋 SHA로 지정하면 그 버전으로 실행합니다. 기본값은 develop입니다.
+services:
+  config-service:
+    image: ghcr.io/lgcns-am06-project2-team5/config-service:${IMAGE_TAG:-develop}
+  discovery-service:
+    image: ghcr.io/lgcns-am06-project2-team5/discovery-service:${IMAGE_TAG:-develop}
+  gateway-service:
+    image: ghcr.io/lgcns-am06-project2-team5/gateway-service:${IMAGE_TAG:-develop}
+  user-service:
+    image: ghcr.io/lgcns-am06-project2-team5/user-service:${IMAGE_TAG:-develop}
+  policy-service:
+    image: ghcr.io/lgcns-am06-project2-team5/policy-service:${IMAGE_TAG:-develop}
+  engagement-service:
+    image: ghcr.io/lgcns-am06-project2-team5/engagement-service:${IMAGE_TAG:-develop}
+  recommendation-service:
+    image: ghcr.io/lgcns-am06-project2-team5/recommendation-service:${IMAGE_TAG:-develop}
