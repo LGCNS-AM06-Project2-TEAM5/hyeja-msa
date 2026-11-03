@@ -5,6 +5,7 @@ import com.hyeja.userservice.domain.member.dto.MemberFindEmailResponseDTO;
 import com.hyeja.userservice.domain.member.dto.MemberLoginRequestDTO;
 import com.hyeja.userservice.domain.member.dto.MemberLoginResponseDTO;
 import com.hyeja.userservice.domain.member.dto.MemberSignupRequestDTO;
+import com.hyeja.userservice.domain.member.dto.MemberWithdrawRequestDTO;
 import com.hyeja.userservice.domain.member.service.MemberService;
 import com.hyeja.userservice.global.apiPayload.ApiResponse;
 import jakarta.validation.Valid;
@@ -14,6 +15,7 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -48,6 +50,16 @@ public class MemberController {
     @GetMapping("/me")
     public ApiResponse<MemberAccountResponseDTO> getMyAccount(@AuthenticationPrincipal Long memberId) {
         return ApiResponse.onSuccess(memberService.getMyAccount(memberId));
+    }
+
+    @PatchMapping("/me/delete")
+    public ApiResponse<Void> withdraw(
+            @AuthenticationPrincipal Long memberId,
+            Authentication authentication,
+            @Valid @RequestBody MemberWithdrawRequestDTO request
+    ) {
+        memberService.withdraw(memberId, request.getPassword(), (String) authentication.getCredentials());
+        return ApiResponse.onSuccess(null);
     }
 
     @GetMapping("/find-email")

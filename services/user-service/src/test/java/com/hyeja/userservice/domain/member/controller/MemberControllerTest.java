@@ -2,11 +2,13 @@ package com.hyeja.userservice.domain.member.controller;
 
 import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -200,6 +202,43 @@ class MemberControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.result.memberId").value(1))
                 .andExpect(jsonPath("$.result.email").value("hyeja@example.com"));
+    }
+
+    @Test
+    void withdrawsWithPasswordAndAuthenticatedToken() throws Exception {
+        mvc.perform(patch("/api/members/me/delete")
+                        .principal(new UsernamePasswordAuthenticationToken(1L, "access-token"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"password\":\"hyeja1234!\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.result").value(nullValue()));
+
+        verify(memberService).withdraw(1L, "hyeja1234!", "access-token");
+    }
+
+    @Test
+    void rejectsWithdrawalWithoutPassword() throws Exception {
+        mvc.perform(patch("/api/members/me/delete")
+                        .principal(new UsernamePasswordAuthenticationToken(1L, "access-token"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("COMMON_003"))
+                .andExpect(jsonPath("$.result.password").exists());
+        verifyNoInteractions(memberService);
+    }
+
+    @Test
+    void returnsBadRequestWhenWithdrawalPasswordDoesNotMatch() throws Exception {
+        doThrow(new GeneralException(ErrorStatus.MEMBER_PASSWORD_MISMATCH))
+                .when(memberService).withdraw(1L, "wrong-password", "access-token");
+
+        mvc.perform(patch("/api/members/me/delete")
+                        .principal(new UsernamePasswordAuthenticationToken(1L, "access-token"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"password\":\"wrong-password\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("MEMBER_006"));
     }
 
     @Test
