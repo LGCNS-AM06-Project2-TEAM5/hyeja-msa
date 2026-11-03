@@ -89,6 +89,8 @@ public class ConfigSecurityConfiguration {
                 .sessionManagement(spec -> spec.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(spec -> spec
                         .requestMatchers(HttpMethod.GET, "/actuator/health", "/actuator/health/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/actuator/busrefresh", "/actuator/busrefresh/**")
+                            .hasRole("CONFIG_ADMIN")
                         .requestMatchers("/actuator/**").denyAll()
                         .requestMatchers("/encrypt", "/encrypt/**", "/decrypt", "/decrypt/**", "/key", "/key/**")
                             .hasRole("CONFIG_ADMIN")

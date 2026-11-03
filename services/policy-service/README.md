@@ -55,7 +55,9 @@
 
 | 호출 | 클라이언트 | 실패할 때 |
 |---|---|---|
-| F6 회원 조건 (→ user `GET /internal/members/{memberId}/profile`) | `UserClient`는 직접 쓰지 않고 `MemberProfileReader.getActiveProfile`을 씁니다 | `MEMBER_001`·`PROFILE_001`은 그대로 돌려주고, 연결 실패·시간 초과·5xx는 503 `SERVER_002`. 정책 상세는 이 경우 비로그인 응답으로 대신합니다 |
+| F6 회원 조건 (→ user `GET /internal/members/{memberId}/profile`) | `UserClient`는 직접 쓰지 않고 `MemberProfileReader.getActiveProfile`을 씁니다 | `MEMBER_001`·`PROFILE_001`은 그대로 돌려주고, 연결 실패·시간 초과·5xx는 503 `SERVER_002`. 정책 상세와 회원 카드뉴스(`GET /api/policies/card-news`)는 이 경우 비로그인 응답으로 대신합니다 |
+
+로그인 회원 기능 중 user(F6)를 쓰는 곳은 정책 상세 판정(`PolicyMemberService.getMemberDetail`), 내 조건 정책 목록(`GET /api/policies/housing/me`, `PolicyMemberController`), 회원 홈 카드뉴스입니다. `/housing/me`의 회원 조건 쿼리 `PolicyRepository.findHousingPoliciesForMember`는 1차 그대로이고 예준님 확인을 받고 넣었습니다.
 
 시간 제한은 `application.yml`의 `spring.cloud.openfeign.client.config.default`(연결 1초, 응답 2초)입니다. 서비스 주소는 Eureka에서 찾습니다.
 
@@ -167,3 +169,14 @@ Issue #45는 선행 수집 PR #44 위의 작업입니다. 회원 연결 지점�
 날짜는 Recommendation이 전달하며 Policy 서버의 오늘 날짜로 덮어쓰지 않습니다.
 요청·응답·오류·내부 인증 미확정 상태는 [F2 계약](../../docs/api/README.md#f2-정책-후보-조회-issue-53)을 따릅니다.
 기존 `/api/policies/housing` 목록과 F5 구현은 이번 작업 범위에 포함하지 않습니다.
+
+
+## F5 관심 등록용 정책 스냅샷 (Issue #60)
+
+`GET /internal/policies/{policyId}`는 Engagement의 관심 등록을 위해 정책 정보를 제공합니다.
+원본 `3e47bb1`의 FavoriteService와 같이 없는 정책·삭제·비활성 정책은 `404 POLICY_001`로 거부합니다.
+신청 시작 전·마감일 경과·CLOSED 정책은 삭제되지 않고 활성 상태이면 허용합니다.
+성공하면 정책명·카테고리·지원 내용·마감일·신청 기간 코드·신청 URL·활성/삭제 상태를 반환합니다.
+요청·응답과 오류·내부 인증 미확정 상태는 [F5 계약](../../docs/api/README.md#f5-관심-등록용-정책-존재스냅샷-조회-issue-60)을 따릅니다.
+Engagement의 로컬 스냅샷 생성·갱신과 관심 등록, 관심 삭제의 조회 방식, Kafka 연결은 별도 담당 작업입니다.
+이번 변경에는 #53에서 누락된 F2 계약 문서도 함께 복원했습니다.

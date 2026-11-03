@@ -2,6 +2,8 @@ spring:
   config:
     import: ""
   cloud:
+    bus:
+      enabled: false
     config:
       enabled: false
     discovery:

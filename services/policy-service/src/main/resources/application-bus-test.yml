@@ -1,0 +1,6 @@
+# Only the non-sensitive probe is exposed; env/configprops remain private.
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,refreshstatus

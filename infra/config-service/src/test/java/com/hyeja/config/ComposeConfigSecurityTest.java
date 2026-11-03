@@ -8,6 +8,24 @@ import org.springframework.core.io.FileSystemResource;
 import static org.assertj.core.api.Assertions.*;
 
 class ComposeConfigSecurityTest {
+    @Test void busAndHttpsClientSettingsCoexistAfterMerge() throws Exception {
+        var loader = new YamlPropertySourceLoader();
+        for (String module : new String[]{"../../infra/gateway-service", "../../services/user-service",
+                "../../services/policy-service", "../../services/engagement-service", "../../services/recommendation-service"}) {
+            var source = loader.load(module, new FileSystemResource(Path.of(module, "src/main/resources/application.yml"))).get(0);
+            assertThat(source.getProperty("spring.cloud.bus.destination")).isEqualTo("hyeja-config-bus");
+            assertThat(source.getProperty("spring.cloud.config.uri")).isEqualTo("${CONFIG_SERVER_URL:https://localhost:8888}");
+        }
+        var compose = loader.load("compose", new FileSystemResource(Path.of("../../compose.yaml"))).get(0);
+        assertThat(compose.getProperty("services.config-service.environment.MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE"))
+                .isEqualTo("health,info,busrefresh");
+        assertThat(compose.getProperty("services.gateway-service.depends_on.kafka-init.condition"))
+                .isEqualTo("service_completed_successfully");
+        var probe = loader.load("bus-test", new FileSystemResource(Path.of("../../compose.bus-test.yaml"))).get(0);
+        assertThat(probe.getProperty("services.config-service.environment.CONFIG_ALLOWED_PROFILES").toString())
+                .contains("bus-test");
+    }
+
     @Test void composeUsesVerifiedHttpsAndDistinctAccountsWithoutDistributingPrivateKeys() throws Exception {
         var loaded = new YamlPropertySourceLoader().load("compose", new FileSystemResource(Path.of("../../compose.yaml")));
         Map<String, Object> properties = new java.util.LinkedHashMap<>();
