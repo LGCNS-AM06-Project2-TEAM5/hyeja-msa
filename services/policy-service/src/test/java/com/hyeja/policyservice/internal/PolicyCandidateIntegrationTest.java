@@ -72,7 +72,7 @@ class PolicyCandidateIntegrationTest {
         var statistics = emf.unwrap(SessionFactory.class).getStatistics();
         statistics.clear();
 
-        mvc.perform(post(PATH).contentType(MediaType.APPLICATION_JSON).content("""
+        mvc.perform(post(PATH).header("X-Internal-Token", "test-internal-token").contentType(MediaType.APPLICATION_JSON).content("""
                 {"categories":["MONTHLY_RENT","JEONSE"],"regionCode":"11440","today":"2030-01-02"}
                 """))
                 .andExpect(status().isOk())
@@ -109,7 +109,7 @@ class PolicyCandidateIntegrationTest {
 
     @Test
     void returnsEmptySuccessWhenNoCandidateExists() throws Exception {
-        mvc.perform(post(PATH).contentType(MediaType.APPLICATION_JSON).content("""
+        mvc.perform(post(PATH).header("X-Internal-Token", "test-internal-token").contentType(MediaType.APPLICATION_JSON).content("""
                 {"categories":[],"regionCode":"11440","today":"2030-01-02"}
                 """))
                 .andExpect(status().isOk())
@@ -120,7 +120,7 @@ class PolicyCandidateIntegrationTest {
     @ParameterizedTest
     @MethodSource("invalidRequests")
     void returnsContractErrorForInvalidRequests(String body, String code) throws Exception {
-        mvc.perform(post(PATH).contentType(MediaType.APPLICATION_JSON).content(body))
+        mvc.perform(post(PATH).header("X-Internal-Token", "test-internal-token").contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value(code));
     }
 

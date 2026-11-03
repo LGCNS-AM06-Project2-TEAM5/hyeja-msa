@@ -28,3 +28,8 @@ youth:
   api:
     key: test-not-a-real-key
     url: https://example.com/policies
+
+# 내부 API(/internal/**) 공유 비밀값. 테스트 전용 가짜 값입니다.
+hyeja:
+  internal:
+    token: test-internal-token

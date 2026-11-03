@@ -45,7 +45,7 @@ class UserClientIntegrationTest {
     }
 
     @Test
-    void 회원_조건_응답을_받아_옮겨_담는다() {
+    void 내부_토큰을_붙여_보내고_회원_조건_응답을_옮겨_담는다() {
         MemberProfileDTO profile = reader.getActiveProfile(1L);
 
         assertThat(profile.memberId()).isEqualTo(1L);
@@ -76,7 +76,10 @@ class UserClientIntegrationTest {
     private static HttpServer startUserService() {
         try {
             HttpServer server = HttpServer.create(new InetSocketAddress("localhost", 0), 0);
-            server.createContext("/internal/members/1/profile", exchange -> respond(exchange, 200, """
+            // 1번은 실제 user처럼 X-Internal-Token이 맞아야 응답합니다. 헤더가 빠지면 401이라 첫 테스트가 깨집니다.
+            server.createContext("/internal/members/1/profile", exchange -> respond(exchange,
+                    "test-internal-token".equals(exchange.getRequestHeaders().getFirst("X-Internal-Token")) ? 200 : 401,
+                    """
                     {"isSuccess":true,"code":"SUCCESS_001","message":"성공입니다.","result":{
                       "memberId":1,"birth":"2000-03-15",
                       "region":{"regionCode":"11440","sigunguName":"서울특별시 마포구"},

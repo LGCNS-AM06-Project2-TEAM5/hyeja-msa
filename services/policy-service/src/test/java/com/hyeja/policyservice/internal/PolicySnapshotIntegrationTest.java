@@ -50,7 +50,7 @@ class PolicySnapshotIntegrationTest {
                 .supportContent("월세 지원 내용").applyEndDate(LocalDate.of(2026, 11, 30))
                 .applyUrl("https://example.com/apply"));
 
-        mvc.perform(get("/internal/policies/snapshot"))
+        mvc.perform(get("/internal/policies/snapshot").header("X-Internal-Token", "test-internal-token"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.isSuccess").value(true))
                 .andExpect(jsonPath("$.code").value("SUCCESS_001"))
@@ -70,7 +70,7 @@ class PolicySnapshotIntegrationTest {
     @Test
     void preservesNullFieldsAndAlwaysOpenEnum() throws Exception {
         save(policy("nullable").applyPeriodCode(PolicyApplyPeriod.ALWAYS));
-        mvc.perform(get("/internal/policies/nullable"))
+        mvc.perform(get("/internal/policies/nullable").header("X-Internal-Token", "test-internal-token"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.result.length()").value(9))
                 .andExpect(jsonPath("$.result.supportContent").value(nullValue()))
@@ -91,7 +91,7 @@ class PolicySnapshotIntegrationTest {
             default -> throw new IllegalArgumentException(state);
         }
         save(builder);
-        mvc.perform(get("/internal/policies/{policyId}", state))
+        mvc.perform(get("/internal/policies/{policyId}", state).header("X-Internal-Token", "test-internal-token"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.result.policyId").value(state))
                 .andExpect(jsonPath("$.result.applyPeriodCode")
@@ -112,7 +112,7 @@ class PolicySnapshotIntegrationTest {
             em.flush();
             em.clear();
         }
-        mvc.perform(get("/internal/policies/{policyId}", state))
+        mvc.perform(get("/internal/policies/{policyId}", state).header("X-Internal-Token", "test-internal-token"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.isSuccess").value(false))
                 .andExpect(jsonPath("$.code").value("POLICY_001"))
