@@ -96,6 +96,21 @@ class MemberWithdrawnKafkaIntegrationTest {
         });
     }
 
+    @Test
+    void null_메시지도_DLT에서_막히지_않고_DB에_보관한다() {
+        producer().send(MemberEventKafkaConfig.TOPIC, "NULL", null);
+
+        await().atMost(Duration.ofSeconds(20)).untilAsserted(() -> {
+            assertThat(failedEvents.count()).isEqualTo(1);
+            var failed = failedEvents.findAll().get(0);
+            assertThat(failed.getEventKey()).isEqualTo("NULL");
+            assertThat(failed.getPayload()).isNull();
+            assertThat(failed.getDltTopic()).isEqualTo(MemberEventKafkaConfig.DLT);
+            assertThat(failed.getOriginalTopic()).isEqualTo(MemberEventKafkaConfig.TOPIC);
+            assertThat(failed.getResolvedAt()).isNull();
+        });
+    }
+
     private Policy policy(String policyId) {
         Policy policy = new Policy();
         policy.setPolicyId(policyId);

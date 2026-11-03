@@ -40,7 +40,7 @@ public class FailedMemberEvent {
     private String eventKey;
 
     @Lob
-    @Column(name = "payload", nullable = false)
+    @Column(name = "payload")
     private String payload;
 
     @Column(name = "original_topic", length = 200)
