@@ -20,6 +20,7 @@ Compose v2 이상, 이미지/Gradle 의존성/GitHub 접근이 가능한 네트�
 | `CONFIG_ENCRYPT_KEY` | Config Server 전용 암호화 마스터 키. JWT 키와 다른 무작위 값, 최소 32 UTF-8 바이트 |
 | `CONFIG_READER_PASSWORD` | Config 조회 계정 비밀번호, 16자 이상·72 UTF-8 바이트 이하 |
 | `CONFIG_ADMIN_PASSWORD` | 암·복호화 관리자 비밀번호. 읽기 비밀번호와 다른 값, 16자 이상·72 UTF-8 바이트 이하 |
+| `GATEWAY_ENGAGEMENT_SECRET` | Gateway·engagement 전용 내부 JWT 키. JWT_SECRET과 다른 무작위 값, 최소 32 UTF-8 바이트 |
 
 비밀번호는 서로 다르게 설정합니다. 실제 비밀값은 커밋하지 않습니다.
 Config Server는 health 외 경로에 Basic 인증이 필요합니다. Compose는 읽기 자격증명을 클라이언트에 전달하고, 마스터 키와 관리자 비밀번호는 Config Server에만 전달합니다. 암호화·복호화와 설정 이관 방법은 [Config Server 문서](../infra/config-service/README.md)를 참고하세요. 클라이언트 초기 접속 비밀번호는 Config Git이 아닌 환경변수로 관리합니다.
@@ -27,6 +28,8 @@ Compose는 필요한 변수만 서비스에 명시적으로 전달합니다. 전
 기존 `SERVER_PORT=8080`, `DB_NAME=hyeja`, `DB_USERNAME=root`, `REDIS_HOST=localhost`가
 컨테이너 설정을 덮어쓰지 않습니다. 관리자 계정은 주입하지 않습니다.
 외부 API/메일 키는 필요한 비즈니스 서비스에만 전달합니다.
+
+user-service는 docker 프로필에서 `application-dev.yml`을 읽지 않으므로 Compose가 SMTP host·port 및 인증/TLS 설정을 전달합니다. `MAIL_HOST` 기본값은 smtp.gmail.com, `MAIL_PORT` 기본값은 587입니다. 실제 인증 메일 발송에는 `MAIL_USERNAME`·`MAIL_PASSWORD`가 필요합니다. 로컬 Compose의 health check는 외부 SMTP의 가용성·자격증명에 의존하지 않도록 mail health indicator를 끕니다. 메일 발송 자체를 끄거나 발송 실패를 성공으로 처리하지는 않습니다.
 
 ## 실행
 

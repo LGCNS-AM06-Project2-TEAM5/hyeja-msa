@@ -53,9 +53,9 @@ class NotificationServiceTest {
 
 
     @Test void manualGenerationEndpointIsAbsent() throws Exception {
-        var mvc = org.springframework.test.web.servlet.setup.MockMvcBuilders.webAppContextSetup(context).build();
+        var mvc = org.springframework.test.web.servlet.setup.MockMvcBuilders.webAppContextSetup(context).apply(org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity()).build();
         mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/notification/admin/generate")
-                        .header("X-Member-Id", "1").param("memberId", "1"))
+                        .header("X-Gateway-Assertion", com.hyeja.engagementservice.security.InternalTokenFixture.valid(1L)).param("memberId", "1"))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isNotFound());
     }
 }

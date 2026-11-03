@@ -7,6 +7,9 @@ spring:
 server:
   port: 0
 
+internal-auth:
+  secret: ${GATEWAY_ENGAGEMENT_SECRET}
+
 ---
 spring:
   config:

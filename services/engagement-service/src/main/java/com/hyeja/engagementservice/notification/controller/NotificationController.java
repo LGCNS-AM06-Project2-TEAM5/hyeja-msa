@@ -14,7 +14,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -49,13 +49,13 @@ public class NotificationController {
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "401",
-                    description = "회원 식별 헤더 누락 또는 오류 (COMMON_002)",
+                    description = "내부 인증 토큰 누락 또는 오류 (COMMON_002)",
                     content = @Content(schema = @Schema(implementation = ApiResponse.class))
             )
     })
     @GetMapping("")
     public ApiResponse<NotificationListDTO> getNotifications(
-            @RequestHeader("X-Member-Id") Long memberId,
+            @AuthenticationPrincipal Long memberId,
             @Parameter(name = "page", description = "페이지 번호(0부터 시작)", in = ParameterIn.QUERY, example = "0")
             @RequestParam(name = "page", defaultValue = "0")
             @PositiveOrZero(message = "페이지 번호는 0 이상이어야 합니다.") int page,
@@ -93,7 +93,7 @@ public class NotificationController {
             @Parameter(description = "읽음 처리할 알림 ID", example = "1", required = true)
             @PathVariable("notificationId")
             @Positive(message = "알림 ID는 양수여야 합니다.") Long notificationId,
-            @RequestHeader("X-Member-Id") Long memberId
+            @AuthenticationPrincipal Long memberId
     ) {
         NotificationItemDTO result = notificationService.markAsRead(memberId, notificationId);
         return ApiResponse.onSuccess(result);
@@ -124,7 +124,7 @@ public class NotificationController {
             @Parameter(description = "삭제할 알림 ID", example = "1", required = true)
             @PathVariable("notificationId")
             @Positive(message = "알림 ID는 양수여야 합니다.") Long notificationId,
-            @RequestHeader("X-Member-Id") Long memberId
+            @AuthenticationPrincipal Long memberId
     ) {
         notificationService.deleteNotification(memberId, notificationId);
         return ApiResponse.onSuccess(null);

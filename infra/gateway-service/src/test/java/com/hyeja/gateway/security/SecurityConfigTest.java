@@ -26,6 +26,9 @@ class SecurityConfigTest {
     @EnableWebFluxSecurity
     static class TestConfig {
         @Bean JwtVerifier verifier() { return new JwtVerifier(SECRET); }
+        @Bean EngagementTokenIssuer engagementTokens() {
+            return new EngagementTokenIssuer("test-only-internal-key-at-least-32-bytes-long", SECRET);
+        }
         @Bean TokenBlacklist blacklist() { return mock(TokenBlacklist.class); }
         @Bean WebHandler webHandler() {
             return exchange -> {
@@ -37,6 +40,8 @@ class SecurityConfigTest {
                 exchange.getResponse().getHeaders().set("Forwarded-Authorization",
                         exchange.getRequest().getHeaders().getFirst("Authorization") == null ? "none" :
                                 exchange.getRequest().getHeaders().getFirst("Authorization"));
+                var assertion = exchange.getRequest().getHeaders().getFirst(EngagementTokenIssuer.HEADER);
+                if (assertion != null) exchange.getResponse().getHeaders().set("Test-Assertion", assertion);
                 return exchange.getResponse().setComplete();
             };
         }
@@ -79,6 +84,42 @@ class SecurityConfigTest {
                 .expectHeader().valueEquals("Forwarded-Authorization", "Bearer " + token);
         client.get().uri("/api/regions").header("X-Member-Id", "999").exchange()
                 .expectStatus().isOk().expectHeader().doesNotExist("Verified-Member");
+    }
+
+    @Test
+    void internalTokenIsIssuedOnlyForEngagementAndExternalAssertionsAreRemoved() {
+        String user = token("USER", Instant.now().plusSeconds(600));
+        for (String path : new String[]{"/api/favorite", "/api/notification/1/read"}) {
+            client.get().uri(path).header("Authorization", "Bearer " + user)
+                    .header(EngagementTokenIssuer.HEADER, "spoofed", "duplicate")
+                    .header("X-Member-Id", "999").exchange().expectStatus().isOk()
+                    .expectHeader().valueEquals("Verified-Member", "10")
+                    .expectHeader().value("Test-Assertion", assertion -> {
+                        var claims = Jwts.parser().verifyWith(Keys.hmacShaKeyFor(
+                                "test-only-internal-key-at-least-32-bytes-long".getBytes(StandardCharsets.UTF_8)))
+                                .requireIssuer("gateway-service").build().parseSignedClaims(assertion).getPayload();
+                        org.junit.jupiter.api.Assertions.assertEquals("10", claims.getSubject());
+                        org.junit.jupiter.api.Assertions.assertEquals(java.util.Set.of("engagement-service"), claims.getAudience());
+                        org.junit.jupiter.api.Assertions.assertEquals(120_000L,
+                                claims.getExpiration().getTime() - claims.getIssuedAt().getTime());
+                    });
+        }
+        client.get().uri("/api/members/me").header("Authorization", "Bearer " + user)
+                .header(EngagementTokenIssuer.HEADER, "spoofed").exchange().expectStatus().isOk()
+                .expectHeader().doesNotExist("Test-Assertion");
+        client.get().uri("/api/regions").header(EngagementTokenIssuer.HEADER, "spoofed")
+                .exchange().expectStatus().isOk().expectHeader().doesNotExist("Test-Assertion");
+        when(blacklist.contains(user)).thenReturn(Mono.just(true));
+        client.get().uri("/api/favorite").header("Authorization", "Bearer " + user)
+                .exchange().expectStatus().isUnauthorized().expectHeader().doesNotExist("Test-Assertion");
+    }
+
+    @Test
+    void internalKeyMustBeStrongAndDifferentFromUserKey() {
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+                () -> new EngagementTokenIssuer(SECRET, SECRET));
+        org.junit.jupiter.api.Assertions.assertThrows(RuntimeException.class,
+                () -> new EngagementTokenIssuer("short", SECRET));
     }
 
     @Test

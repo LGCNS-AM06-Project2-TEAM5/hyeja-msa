@@ -46,16 +46,16 @@ class FavoriteServiceTest {
     }
 
     @Test void httpContractAndAuthentication() throws Exception {
-        var mvc = org.springframework.test.web.servlet.setup.MockMvcBuilders.webAppContextSetup(context).build();
+        var mvc = org.springframework.test.web.servlet.setup.MockMvcBuilders.webAppContextSetup(context).apply(org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity()).build();
         mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/favorite"))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isUnauthorized());
         mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/favorite/P1")
-                        .header("X-Member-Id", "1"))
+                        .header("X-Gateway-Assertion", com.hyeja.engagementservice.security.InternalTokenFixture.valid(1L)))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk())
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.code").value("SUCCESS_001"))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.result.policy_id").value("P1"));
         mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/favorite")
-                        .header("X-Member-Id", "1").param("page", "-1"))
+                        .header("X-Gateway-Assertion", com.hyeja.engagementservice.security.InternalTokenFixture.valid(1L)).param("page", "-1"))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isBadRequest());
 
     }

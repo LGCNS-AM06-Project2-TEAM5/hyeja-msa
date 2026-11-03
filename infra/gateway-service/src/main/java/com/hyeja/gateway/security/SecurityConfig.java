@@ -17,7 +17,7 @@ import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
 public class SecurityConfig {
     @Bean
     SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http, JwtVerifier verifier,
-                                                 TokenBlacklist blacklist) {
+                                                 TokenBlacklist blacklist, EngagementTokenIssuer engagementTokens) {
         CorsConfiguration cors = new CorsConfiguration();
         cors.setAllowedOrigins(List.of("http://localhost:5173"));
         cors.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
@@ -48,7 +48,7 @@ public class SecurityConfig {
                                 "/api/terms/**", "/api/policies/housing", "/api/policies/card-news/guest",
                                 "/api/policies/card-detail/*", "/api/policies/*", "/api/health").permitAll()
                         .anyExchange().authenticated())
-                .addFilterAt(new JwtAuthenticationWebFilter(verifier, blacklist),
+                .addFilterAt(new JwtAuthenticationWebFilter(verifier, blacklist, engagementTokens),
                         SecurityWebFiltersOrder.AUTHENTICATION)
                 .build();
     }

@@ -183,6 +183,7 @@ services:
       SPRING_CLOUD_CONFIG_PASSWORD: ${CONFIG_READER_PASSWORD:?Set CONFIG_READER_PASSWORD (16+ characters)}
       SERVER_PORT: "8000"
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env (at least 32 UTF-8 bytes)}
+      GATEWAY_ENGAGEMENT_SECRET: ${GATEWAY_ENGAGEMENT_SECRET:?Set a separate internal JWT key (at least 32 UTF-8 bytes)}
     ports:
       - "127.0.0.1:${GATEWAY_HOST_PORT:-8000}:8000"
     depends_on:
@@ -208,6 +209,18 @@ services:
       SPRING_DATASOURCE_URL: jdbc:mariadb://mariadb:3306/user_db
       SPRING_DATASOURCE_USERNAME: user_app
       SPRING_DATASOURCE_PASSWORD: ${USER_DB_PASSWORD:?Set USER_DB_PASSWORD in .env}
+      # Mail settings in application-dev.yml are not loaded by the docker profile.
+      SPRING_MAIL_HOST: ${MAIL_HOST:-smtp.gmail.com}
+      SPRING_MAIL_PORT: ${MAIL_PORT:-587}
+      SPRING_MAIL_USERNAME: ${MAIL_USERNAME:-}
+      SPRING_MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH: "true"
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE: "true"
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_CONNECTIONTIMEOUT: "5000"
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_TIMEOUT: "5000"
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_WRITETIMEOUT: "5000"
+      # Local Compose readiness must not require external SMTP credentials/connectivity.
+      MANAGEMENT_HEALTH_MAIL_ENABLED: "false"
       MAIL_USERNAME: ${MAIL_USERNAME:-}
       MAIL_PASSWORD: ${MAIL_PASSWORD:-}
     depends_on: *business-dependencies
@@ -242,6 +255,7 @@ services:
     environment:
       <<: *business-environment
       SERVER_PORT: "8083"
+      GATEWAY_ENGAGEMENT_SECRET: ${GATEWAY_ENGAGEMENT_SECRET:?Set a separate internal JWT key (at least 32 UTF-8 bytes)}
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
       DB_HOST: mariadb
       DB_PORT: "3306"
