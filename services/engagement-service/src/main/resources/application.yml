@@ -1,4 +1,7 @@
 spring:
+  cloud:
+    config:
+      uri: ${CONFIG_SERVER_URL:https://localhost:8888}
   application:
     name: engagement-service
   profiles:
@@ -17,4 +20,4 @@ spring:
       on-profile: "!test"
     # 테스트 외 실행에서는 환경변수로 지정한 Config Server를 조회합니다.
     # Config Server가 없어도 기동할 수 있도록 optional을 유지합니다.
-    import: "optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}"
+    import: "optional:configserver:${CONFIG_SERVER_URL:https://localhost:8888}"

@@ -26,3 +26,4 @@ HELP.md
 *.log
 tmp/
 /data/
+/docker/config-tls/

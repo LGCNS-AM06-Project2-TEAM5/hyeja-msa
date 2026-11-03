@@ -1,0 +1,4 @@
+# Encrypt the same internal JWT signing key used for gateway-service.
+# This template is not loaded by Config Server or the application.
+internal-auth:
+  secret: '{cipher}<replace-with-encrypt-response>'
