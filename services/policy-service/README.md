@@ -57,6 +57,8 @@
 |---|---|---|
 | F6 회원 조건 (→ user `GET /internal/members/{memberId}/profile`) | `UserClient`는 직접 쓰지 않고 `MemberProfileReader.getActiveProfile`을 씁니다 | `MEMBER_001`·`PROFILE_001`은 그대로 돌려주고, 연결 실패·시간 초과·5xx는 503 `SERVER_002`. 정책 상세는 이 경우 비로그인 응답으로 대신합니다 |
 
+로그인 회원 기능 중 user(F6)를 쓰는 곳은 정책 상세 판정(`PolicyMemberService.getMemberDetail`), 내 조건 정책 목록(`GET /api/policies/housing/me`, `PolicyMemberController`), 회원 홈 카드뉴스입니다. `/housing/me`의 회원 조건 쿼리 `PolicyRepository.findHousingPoliciesForMember`는 1차 그대로이고 예준님 확인을 받고 넣었습니다.
+
 시간 제한은 `application.yml`의 `spring.cloud.openfeign.client.config.default`(연결 1초, 응답 2초)입니다. 서비스 주소는 Eureka에서 찾습니다.
 
 ## 로컬 개발 실행
