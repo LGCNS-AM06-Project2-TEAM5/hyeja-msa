@@ -8,8 +8,9 @@ import com.hyeja.userservice.domain.member.dto.MemberLoginResponseDTO;
 import com.hyeja.userservice.domain.member.dto.MemberSignupRequestDTO;
 import com.hyeja.userservice.domain.member.entity.Member;
 import com.hyeja.userservice.domain.member.repository.MemberRepository;
-import com.hyeja.userservice.domain.profile.service.ProfileService;
+import com.hyeja.userservice.domain.profile.entity.Profile;
 import com.hyeja.userservice.domain.profile.repository.ProfileRepository;
+import com.hyeja.userservice.domain.profile.service.ProfileService;
 import com.hyeja.userservice.global.apiPayload.status.ErrorStatus;
 import com.hyeja.userservice.global.exception.GeneralException;
 import com.hyeja.userservice.global.security.JwtProvider;
@@ -71,6 +72,18 @@ public class MemberService {
 
     public MemberAccountResponseDTO getMyAccount(Long memberId) {
         return MemberConverter.toMemberAccountResponseDTO(getActiveMember(memberId));
+    }
+
+    @Transactional
+    public void withdraw(Long memberId, String password, String token) {
+        Member member = getActiveMember(memberId);
+        if (!passwordEncoder.matches(password, member.getPassword())) {
+            throw new GeneralException(ErrorStatus.MEMBER_PASSWORD_MISMATCH);
+        }
+
+        profileRepository.findById(member.getEmail()).ifPresent(Profile::softDelete);
+        member.softDelete();
+        logout(token);
     }
 
     public Member getActiveMember(Long memberId) {

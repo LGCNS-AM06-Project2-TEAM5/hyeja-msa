@@ -174,6 +174,54 @@ class MemberServiceTest {
     }
 
     @Test
+    void withdrawSoftDeletesMemberAndProfileAndBlacklistsToken() {
+        Member member = member(1L, LocalDateTime.now());
+        Profile profile = profile(member, LocalDate.of(2000, 3, 15));
+        Date expiration = new Date(System.currentTimeMillis() + Duration.ofMinutes(10).toMillis());
+        when(memberRepository.findById(1L)).thenReturn(Optional.of(member));
+        when(passwordEncoder.matches("hyeja1234!", "encoded-password")).thenReturn(true);
+        when(profileRepository.findById("hyeja@example.com")).thenReturn(Optional.of(profile));
+        when(jwtProvider.parse("access-token"))
+                .thenReturn(Jwts.claims().expiration(expiration).build());
+
+        memberService.withdraw(1L, "hyeja1234!", "access-token");
+
+        assertThat(member.isDeleted()).isTrue();
+        assertThat(profile.isDeleted()).isTrue();
+        verify(tokenBlacklist).add(eq("access-token"), any(Duration.class));
+    }
+
+    @Test
+    void withdrawRejectsWrongPasswordWithoutChangingDataOrToken() {
+        Member member = member(1L, LocalDateTime.now());
+        when(memberRepository.findById(1L)).thenReturn(Optional.of(member));
+        when(passwordEncoder.matches("wrong-password", "encoded-password")).thenReturn(false);
+
+        assertThatThrownBy(() -> memberService.withdraw(1L, "wrong-password", "access-token"))
+                .isInstanceOf(GeneralException.class)
+                .extracting("code")
+                .isEqualTo(ErrorStatus.MEMBER_PASSWORD_MISMATCH);
+
+        assertThat(member.isDeleted()).isFalse();
+        verify(profileRepository, never()).findById(any());
+        verify(tokenBlacklist, never()).add(any(), any());
+    }
+
+    @Test
+    void withdrawRejectsMissingOrAlreadyDeletedMember() {
+        when(memberRepository.findById(99L)).thenReturn(Optional.empty());
+        assertWithdrawalMemberNotFound(99L);
+
+        Member deleted = member(2L, LocalDateTime.now());
+        deleted.softDelete();
+        when(memberRepository.findById(2L)).thenReturn(Optional.of(deleted));
+        assertWithdrawalMemberNotFound(2L);
+
+        verify(passwordEncoder, never()).matches(any(), any());
+        verify(tokenBlacklist, never()).add(any(), any());
+    }
+
+    @Test
     void getMyAccountReturnsOnlyActiveMember() {
         LocalDateTime createdAt = LocalDateTime.of(2026, 11, 2, 16, 30);
         when(memberRepository.findById(1L)).thenReturn(Optional.of(member(1L, createdAt)));
@@ -256,6 +304,13 @@ class MemberServiceTest {
 
     private void assertMemberNotFound(Long memberId) {
         assertThatThrownBy(() -> memberService.getMyAccount(memberId))
+                .isInstanceOf(GeneralException.class)
+                .extracting("code")
+                .isEqualTo(ErrorStatus.MEMBER_NOT_FOUND);
+    }
+
+    private void assertWithdrawalMemberNotFound(Long memberId) {
+        assertThatThrownBy(() -> memberService.withdraw(memberId, "hyeja1234!", "access-token"))
                 .isInstanceOf(GeneralException.class)
                 .extracting("code")
                 .isEqualTo(ErrorStatus.MEMBER_NOT_FOUND);
