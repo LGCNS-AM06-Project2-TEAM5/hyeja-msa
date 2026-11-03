@@ -35,7 +35,7 @@ public class PolicyEventKafkaConfig {
 
     @Bean
     public ConcurrentKafkaListenerContainerFactory<String, String> policyUpdatedListenerContainerFactory(
-            @Value("${spring.kafka.bootstrap-servers}") String bootstrapServers) {
+            @Value("${spring.kafka.bootstrap-servers}") String bootstrapServers, PolicyEventMetrics metrics) {
         var consumerFactory = new DefaultKafkaConsumerFactory<String, String>(Map.of(
                 ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers,
                 ConsumerConfig.GROUP_ID_CONFIG, GROUP_ID,
@@ -47,7 +47,11 @@ public class PolicyEventKafkaConfig {
                 ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class,
                 ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class)));
         var recoverer = new DeadLetterPublishingRecoverer(dltTemplate, (record, e) -> new TopicPartition(DLT, -1));
-        var errorHandler = new DefaultErrorHandler(recoverer, new FixedBackOff(1000L, 3L));
+        // DLT로 실제로 보낸 뒤에만 셉니다. 보내기가 실패하면 accept가 예외를 던져 세지 않습니다.
+        var errorHandler = new DefaultErrorHandler((record, e) -> {
+            recoverer.accept(record, e);
+            metrics.recordDlt();
+        }, new FixedBackOff(1000L, 3L));
         errorHandler.addNotRetryableExceptions(JacksonException.class);
 
         var factory = new ConcurrentKafkaListenerContainerFactory<String, String>();
