@@ -36,6 +36,9 @@ dependencies {
     implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
     implementation 'org.springframework.cloud:spring-cloud-starter-openfeign'
     implementation 'org.springframework.cloud:spring-cloud-starter-loadbalancer'
+    // F1·F2·F3 Feign 호출의 Circuit Breaker와 Prometheus 메트릭
+    implementation 'org.springframework.cloud:spring-cloud-starter-circuitbreaker-resilience4j'
+    implementation 'io.github.resilience4j:resilience4j-micrometer'
     implementation('com.openai:openai-java:4.69.2') {
         exclude group: 'io.swagger.core.v3', module: 'swagger-annotations'
     }
