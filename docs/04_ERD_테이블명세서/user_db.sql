@@ -1,6 +1,6 @@
 -- user-service · user_db
 -- 기준: hyeja-msa user-service JPA 엔티티 (Member, Profile, Region, BaseEntity)
--- MSA 변경: profile → region FK 제거(지역 코드 값만 저장), region은 policy_db 지역과 같은 내용의 읽기 전용 복사본
+-- MSA 변경: profile → region FK 제거(지역 코드 값만 저장), region은 서버 시작 시 CSV로 따로 채우는 읽기 전용 복사본입니다(policy_db와 실시간 동기화하지 않습니다)
 -- COMMENT = 논리명 / 열 끝 주석 = 값·설명
 
 CREATE TABLE `member` (
