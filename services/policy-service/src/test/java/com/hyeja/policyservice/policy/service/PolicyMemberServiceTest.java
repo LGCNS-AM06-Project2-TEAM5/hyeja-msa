@@ -7,6 +7,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
 
+import com.hyeja.policyservice.client.engagement.FavoriteReader;
 import com.hyeja.policyservice.client.user.MemberProfileReader;
 import com.hyeja.policyservice.client.user.dto.MemberProfileDTO;
 import com.hyeja.policyservice.global.apiPayload.status.ErrorStatus;
@@ -41,10 +42,11 @@ class PolicyMemberServiceTest {
     private final PolicyRegionRepository policyRegionRepository = mock(PolicyRegionRepository.class);
     private final PolicyEligibilityEvaluator evaluator = mock(PolicyEligibilityEvaluator.class);
     private final PolicyRepository policyRepository = mock(PolicyRepository.class);
+    private final FavoriteReader favoriteReader = mock(FavoriteReader.class);
     // 한국 2026-09-27
     private final Clock clock = Clock.fixed(Instant.parse("2026-09-26T16:00:00Z"), ZoneId.of("Asia/Seoul"));
     private final PolicyMemberService service = new PolicyMemberService(
-            memberProfileReader, policyRepository, policyRegionRepository, evaluator, clock);
+            memberProfileReader, favoriteReader, policyRepository, policyRegionRepository, evaluator, clock);
 
     private final Policy policy = policy("P1");
     private final MemberProfileDTO profile = mock(MemberProfileDTO.class);
@@ -82,13 +84,14 @@ class PolicyMemberServiceTest {
     }
 
     @Test
-    void user_서비스가_응답하지_않으면_비로그인_응답으로_대신한다() {
+    void user_서비스가_응답하지_않으면_판정_없이_하트만_채운다() {
         given(memberProfileReader.getActiveProfile(7L))
                 .willThrow(new GeneralException(ErrorStatus.USER_SERVICE_UNAVAILABLE));
+        given(favoriteReader.isFavorite(7L, "P1")).willReturn(true);
 
         PolicyMemberDetailDTO detail = service.getMemberDetail(policy, 7L);
 
-        assertThat(detail).isEqualTo(PolicyMemberDetailDTO.guest());
+        assertThat(detail).isEqualTo(new PolicyMemberDetailDTO(true, null, List.of()));
         verifyNoInteractions(evaluator);
     }
 
@@ -106,10 +109,10 @@ class PolicyMemberServiceTest {
     @Test
     void 회원_ID가_없으면_user를_부르지_않는다() {
         assertThat(service.getMemberDetail(policy, null)).isEqualTo(PolicyMemberDetailDTO.guest());
-        verifyNoInteractions(memberProfileReader, evaluator);
+        verifyNoInteractions(memberProfileReader, evaluator, favoriteReader);
     }
 
-    // 1차 PolicyServiceTest.returnsMemberPolicyPageWithRegionsAndFavoriteStatus를 옮긴 것. 하트는 F4 전이라 false입니다.
+    // 1차 PolicyServiceTest.returnsMemberPolicyPageWithRegionsAndFavoriteStatus를 옮긴 것. 하트는 F4로 현재 페이지 정책만 묻습니다.
     @Test
     void 회원_조건으로_정책_목록을_거른다() {
         LocalDate today = LocalDate.of(2026, 9, 27);
@@ -126,6 +129,7 @@ class PolicyMemberServiceTest {
                 .willReturn(new PageImpl<>(List.of(policy), pageRequest, 9));
         given(policyRegionRepository.findAllActiveByPolicyIds(List.of("POLICY-1")))
                 .willReturn(List.of(PolicyRegion.builder().policy(policy).region(region).build()));
+        given(favoriteReader.findFavoritePolicyIds(1L, List.of("POLICY-1"))).willReturn(Set.of("POLICY-1"));
 
         PolicyListDTO result = service.getHousingPoliciesForMember(
                 1L, PolicyCategory.MONTHLY_RENT, PolicySort.DEADLINE, true, 0, 8);
@@ -137,7 +141,7 @@ class PolicyMemberServiceTest {
                     .satisfies(itemRegion -> assertThat(itemRegion.getRegionCode()).isEqualTo("11440"));
             assertThat(item.isNationwide()).isFalse();
             assertThat(item.getDDay()).isEqualTo(4);
-            assertThat(item.isFavoriteYn()).isFalse();
+            assertThat(item.isFavoriteYn()).isTrue();
         });
         assertThat(result.getTotalElements()).isEqualTo(9);
         assertThat(result.isHasNext()).isTrue();
