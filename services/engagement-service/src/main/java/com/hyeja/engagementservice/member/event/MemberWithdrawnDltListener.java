@@ -20,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class MemberWithdrawnDltListener {
 
     private final FailedMemberEventRepository repository;
+    private final DltNotificationService notificationService;
 
     @Transactional
     @KafkaListener(
@@ -43,6 +44,7 @@ public class MemberWithdrawnDltListener {
                 longHeader(record, KafkaHeaders.DLT_ORIGINAL_OFFSET),
                 abbreviate(textHeader(record, KafkaHeaders.DLT_EXCEPTION_MESSAGE), 1000),
                 LocalDateTime.now()));
+        notificationService.recordFailure(record.topic(), record.key(), record.value());
         log.error("member-withdrawn DLT 저장. key={}, partition={}, offset={}",
                 record.key(), record.partition(), record.offset());
     }
