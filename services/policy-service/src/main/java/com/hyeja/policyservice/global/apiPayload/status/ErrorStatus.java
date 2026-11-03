@@ -21,6 +21,12 @@ public enum ErrorStatus implements BaseErrorCode {
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "SERVER_001", "서버 오류가 발생했습니다."),
 
     // policy-service가 쓰는 코드만 1차(hyeja-backend)에서 가져왔습니다. 회원·인증·관심 정책·검색 코드는 각 서비스가 가집니다.
+    // 회원 조건(F6). MEMBER_001·PROFILE_001은 user-service가 준 코드를 그대로 돌려줍니다(1차와 같은 코드).
+    MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "MEMBER_001", "존재하지 않는 회원입니다."),
+    PROFILE_NOT_FOUND(HttpStatus.NOT_FOUND, "PROFILE_001", "등록된 조건이 없습니다."),
+    // user-service가 응답하지 않거나 실패함. 정책 상세는 이 경우 비로그인 응답으로 대신합니다.
+    USER_SERVICE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "SERVER_002", "회원 정보를 불러오지 못했어요. 잠시 후 다시 시도해 주세요."),
+
     // 지역
     REGION_NOT_FOUND(HttpStatus.NOT_FOUND, "REGION_001", "존재하지 않는 지역입니다."),
 
