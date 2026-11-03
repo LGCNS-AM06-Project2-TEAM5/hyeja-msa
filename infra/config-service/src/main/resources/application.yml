@@ -11,6 +11,15 @@ spring:
   application:
     name: config-service
   cloud:
+    bus:
+      enabled: true
+      destination: hyeja-config-bus
+      id: ${spring.application.name}:${INSTANCE_ID:${random.uuid}}
+    stream:
+      kafka:
+        binder:
+          brokers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:19092}
+          auto-create-topics: false
     config:
       server:
         encrypt:
@@ -26,7 +35,7 @@ encrypt:
   key: ${CONFIG_ENCRYPT_KEY}
 
 config-security:
-  allowed-profiles: default,local,dev,docker
+  allowed-profiles: ${CONFIG_ALLOWED_PROFILES:default,local,dev,docker}
   allowed-labels: main
   readers:
     gateway-service:
@@ -56,7 +65,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health,info,busrefresh
   endpoint:
     health:
       show-details: never

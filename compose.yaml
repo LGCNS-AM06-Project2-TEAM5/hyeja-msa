@@ -16,6 +16,7 @@ x-app-environment: &app-environment
   REDIS_PORT: "6379"
   REDIS_DATABASE: "0"
   SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+  KAFKA_BOOTSTRAP_SERVERS: kafka:9092
   SPRING_KAFKA_LISTENER_OBSERVATION_ENABLED: "true"
   SPRING_KAFKA_TEMPLATE_OBSERVATION_ENABLED: "true"
   JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=60.0"
@@ -132,7 +133,7 @@ services:
     entrypoint: ["/bin/bash", "-ec"]
     command:
       - |
-        for topic in member-registered policy-updated notification-created; do
+        for topic in member-registered policy-updated notification-created hyeja-config-bus; do
           /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic "$$topic" --partitions 1 --replication-factor 1
         done
 
@@ -185,6 +186,7 @@ services:
       CONFIG_RECOMMENDATION_PASSWORD: ${CONFIG_RECOMMENDATION_PASSWORD:?Set CONFIG_RECOMMENDATION_PASSWORD}
       CONFIG_ADMIN_USERNAME: ${CONFIG_ADMIN_USERNAME:-config-admin}
       CONFIG_ADMIN_PASSWORD: ${CONFIG_ADMIN_PASSWORD:?Set a separate CONFIG_ADMIN_PASSWORD (16+ characters)}
+      MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,info,busrefresh
       EUREKA_INSTANCE_PREFER_IP_ADDRESS: "false"
       EUREKA_INSTANCE_HOSTNAME: config-service
       EUREKA_INSTANCE_NON_SECURE_PORT_ENABLED: "false"
@@ -204,6 +206,8 @@ services:
     depends_on:
       discovery-service:
         condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
 
   gateway-service:
     <<: *app
@@ -226,6 +230,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
 
   user-service:
     <<: *app
