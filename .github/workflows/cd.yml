@@ -1,0 +1,77 @@
+name: CD - GHCR
+
+# develop에 합쳐진 7개 Spring Boot 서비스를 Docker 이미지로 빌드해
+# GHCR에 develop 태그와 재현 가능한 커밋 SHA 태그로 함께 발행합니다.
+
+on:
+  push:
+    branches: [develop]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: cd-ghcr-${{ github.ref }}
+  # 실행 중인 발행을 취소하면 서비스별 develop 태그가 서로 다른 커밋을
+  # 가리키는 시간이 생길 수 있으므로 이전 발행을 끝낸 뒤 다음 실행을 시작합니다.
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAMESPACE: lgcns-am06-project2-team5
+
+jobs:
+  build-and-push:
+    name: ${{ matrix.service }} 이미지 발행
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: config-service
+            dockerfile: infra/config-service/Dockerfile
+          - service: discovery-service
+            dockerfile: infra/discovery-service/Dockerfile
+          - service: gateway-service
+            dockerfile: infra/gateway-service/Dockerfile
+          - service: user-service
+            dockerfile: services/user-service/Dockerfile
+          - service: policy-service
+            dockerfile: services/policy-service/Dockerfile
+          - service: recommendation-service
+            dockerfile: services/recommendation-service/Dockerfile
+          - service: engagement-service
+            dockerfile: services/engagement-service/Dockerfile
+
+    steps:
+      - name: 소스 체크아웃
+        uses: actions/checkout@v4
+
+      - name: Docker Buildx 설정
+        uses: docker/setup-buildx-action@v3
+
+      - name: GHCR 로그인
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 이미지 빌드 및 업로드
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/${{ matrix.service }}:develop
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/${{ matrix.service }}:${{ github.sha }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}

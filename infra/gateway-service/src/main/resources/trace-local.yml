@@ -1,0 +1,68 @@
+# Standalone configuration: select with --spring.config.location=classpath:trace-local.yml.
+# It intentionally does not import the Config Server or the normal application.yml.
+server:
+  address: 127.0.0.1
+  port: 8000
+
+spring:
+  application:
+    name: gateway-service
+  reactor:
+    context-propagation: auto
+  data:
+    redis:
+      host: localhost
+      port: ${REDIS_HOST_PORT:16379}
+  cloud:
+    config:
+      enabled: false
+    bus:
+      enabled: false
+    discovery:
+      enabled: false
+    gateway:
+      server:
+        webflux:
+          routes:
+            # Local-only, read-only probe: no account, policy or authentication fixture is required.
+            - id: trace-local-user-health
+              uri: ${LOCAL_USER_URL:http://localhost:8081}
+              predicates:
+                - Path=/api/terms/trace-health
+                - Method=GET
+              filters:
+                - SetPath=/actuator/health
+            - id: trace-local-user
+              uri: ${LOCAL_USER_URL:http://localhost:8081}
+              predicates:
+                - Path=/api/members/**
+
+eureka:
+  client:
+    enabled: false
+
+jwt:
+  secret: ${JWT_SECRET}
+internal-auth:
+  secret: ${GATEWAY_ENGAGEMENT_SECRET}
+
+logging:
+  include-application-name: false
+  pattern:
+    correlation: '[${spring.application.name:},%X{traceId:-},%X{spanId:-}] '
+  level:
+    root: INFO
+  file:
+    name: ./logs/${spring.application.name}.log
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  tracing:
+    sampling:
+      probability: 1.0
+    export:
+      zipkin:
+        endpoint: ${ZIPKIN_ENDPOINT:http://localhost:9411/api/v2/spans}

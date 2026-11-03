@@ -3,12 +3,15 @@ package com.hyeja.policyservice.policy.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.hyeja.policyservice.cardnews.entity.CardNews;
 import com.hyeja.policyservice.cardnews.repository.CardNewsRepository;
+import com.hyeja.policyservice.event.PolicyChangedPublisher;
 import com.hyeja.policyservice.policy.converter.PolicyApiCodeConverter;
 import com.hyeja.policyservice.policy.converter.PolicyApiConverter;
 import com.hyeja.policyservice.policy.dto.PolicyApiResponseDTO.PolicyItem;
@@ -33,9 +36,10 @@ class PolicySyncItemServiceTest {
             new PolicyApiConverter(new PolicyApiCodeConverter());
     private final PolicyRegionRepository policyRegionRepository = mock(PolicyRegionRepository.class);
     private final RegionRepository regionRepository = mock(RegionRepository.class);
+    private final PolicyChangedPublisher policyChangedPublisher = mock(PolicyChangedPublisher.class);
     private final PolicySyncItemService service = new PolicySyncItemService(
             policyRepository, cardNewsRepository, policyApiConverter,
-            policyRegionRepository, regionRepository);
+            policyRegionRepository, regionRepository, policyChangedPublisher);
 
     @Test
     void savesPolicyAndInitialCardNewsTogether() {
@@ -70,6 +74,9 @@ class PolicySyncItemServiceTest {
 
         service.save(item, analysis);
 
+        var order = inOrder(cardNewsRepository, policyChangedPublisher);
+        order.verify(cardNewsRepository, times(4)).save(any(CardNews.class));
+        order.verify(policyChangedPublisher).publish(List.of("policy-1"));
         verify(policyRepository).save(any(Policy.class));
         verify(policyRegionRepository).deleteAllByPolicy_PolicyId("policy-1");
         verify(policyRegionRepository).saveAll(org.mockito.ArgumentMatchers.argThat(regions -> {

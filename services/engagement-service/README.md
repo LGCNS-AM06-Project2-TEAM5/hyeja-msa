@@ -48,8 +48,8 @@
 - F5의 `404 / POLICY_001`은 그대로 반환합니다. 그 외 HTTP 오류·연결 실패·시간 초과·비정상 응답은 `503 / SERVER_002`로 처리하며, 기존 스냅샷으로 대신 등록하지 않습니다.
 - 신청 기간은 추가 검사하지 않습니다. 마감·CLOSED 정책도 F5가 정상 반환하면 등록할 수 있습니다. 관심 삭제는 기존 로컬 조회 방식을 유지하며 F5를 호출하지 않습니다.
 - `/internal/**`는 외부 Gateway 경로로 노출하지 않으며 별도 `X-Internal-Token`은 붙이지 않습니다. 외부 관심 API의 Gateway 인증은 기존 방식을 유지합니다.
-- 검증: `./gradlew test bootJar --no-daemon --no-watch-fs` 성공, 전체 43개 테스트 통과(신규 F5 HTTP·저장 통합 26개, Reader 2개 포함).
-- #88의 공통 저장기 위에 쌓은 작업입니다. 자동 검증은 모의 HTTP 서버를 실제 Feign으로 호출하고 H2에 저장합니다. 실제 Policy·Eureka·Gateway·MariaDB 연동은 별도 검증 대상입니다.
+- 검증: `./gradlew test bootJar --no-daemon --no-watch-fs` 성공, 최신 develop 통합 후 전체 57개 테스트 통과(신규 F5 HTTP·저장 통합 26개, Reader 2개 포함).
+- #88 공통 저장기와 #84 F3·F4 API가 머지된 develop에 통합한 작업입니다. 자동 검증은 모의 HTTP 서버를 실제 Feign으로 호출하고 H2에 저장합니다. 실제 Policy·Eureka·Gateway·MariaDB 연동은 별도 검증 대상입니다.
 
 ## 바뀌는 점
 

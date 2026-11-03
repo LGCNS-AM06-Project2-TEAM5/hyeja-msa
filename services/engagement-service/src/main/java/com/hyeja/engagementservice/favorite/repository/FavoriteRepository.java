@@ -9,6 +9,7 @@ import java.util.Set;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -17,7 +18,9 @@ import org.springframework.stereotype.Repository;
 public interface FavoriteRepository extends JpaRepository<Favorite, Long> {
 
     // 회원 탈퇴 시 그 회원의 관심 정책을 모두 지웁니다 (hard delete).
-    void deleteByMemberId(Long memberId);
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("delete from Favorite favorite where favorite.memberId = :memberId")
+    int deleteAllByMemberId(@Param("memberId") Long memberId);
 
     boolean existsByMemberIdAndPolicyPolicyId(Long memberId, String policyId);
 

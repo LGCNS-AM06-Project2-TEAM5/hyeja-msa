@@ -16,12 +16,15 @@ import tools.jackson.databind.json.JsonMapper;
 public class PolicyUpdatedListener {
     private final PolicySnapshotUpdater updater;
     private final JsonMapper jsonMapper;
+    private final PolicyEventMetrics metrics;
 
     @KafkaListener(topics = PolicyEventKafkaConfig.TOPIC, groupId = PolicyEventKafkaConfig.GROUP_ID,
             containerFactory = "policyUpdatedListenerContainerFactory")
     public void onPolicyUpdated(String payload) {
         PolicyUpdatedEvent event = jsonMapper.readValue(payload, PolicyUpdatedEvent.class);
-        if (updater.apply(event)) {
+        boolean applied = updater.apply(event);
+        metrics.recordApplied(applied);
+        if (applied) {
             log.info("policy_snapshot 반영. eventId={}, policyId={}, deleted={}", event.eventId(), event.policyId(), event.deleted());
         }
     }

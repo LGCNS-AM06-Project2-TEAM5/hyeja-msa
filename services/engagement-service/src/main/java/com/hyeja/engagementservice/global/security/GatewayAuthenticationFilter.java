@@ -18,6 +18,12 @@ public final class GatewayAuthenticationFilter extends OncePerRequestFilter {
     public GatewayAuthenticationFilter(GatewayTokenVerifier verifier) { this.verifier = verifier; }
 
     @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String path = request.getRequestURI().substring(request.getContextPath().length());
+        return path.equals("/internal") || path.startsWith("/internal/");
+    }
+
+    @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
                                     FilterChain chain) throws ServletException, IOException {
         var values = Collections.list(request.getHeaders(GatewayTokenVerifier.HEADER));

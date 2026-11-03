@@ -17,6 +17,21 @@ spring:
           auto-create-topics: false
     config:
       uri: ${CONFIG_SERVER_URL:https://localhost:8888}
+  mail:
+    host: ${SPRING_MAIL_HOST:smtp.gmail.com}
+    port: ${SPRING_MAIL_PORT:587}
+    username: ${SPRING_MAIL_USERNAME:}
+    password: ${SPRING_MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
   application:
     name: engagement-service
   profiles:
@@ -28,6 +43,11 @@ server:
 internal-auth:
   secret: ${GATEWAY_ENGAGEMENT_SECRET}
 
+admin:
+  email: ${ADMIN_ALERT_EMAIL:}
+  dlt-threshold: ${ADMIN_DLT_THRESHOLD:3}
+  dlt-retry-interval-ms: ${ADMIN_DLT_RETRY_INTERVAL_MS:60000}
+
 ---
 spring:
   config:
@@ -36,3 +56,35 @@ spring:
     # 테스트 외 실행에서는 환경변수로 지정한 Config Server를 조회합니다.
     # Config Server가 없어도 기동할 수 있도록 optional을 유지합니다.
     import: "optional:configserver:${CONFIG_SERVER_URL:https://localhost:8888}"
+
+---
+# Local defaults; Docker environment variables override infrastructure addresses.
+logging:
+  include-application-name: false
+  pattern:
+    correlation: '[${spring.application.name:},%X{traceId:-},%X{spanId:-}] '
+  file:
+    name: ${LOG_DIR:./logs}/${spring.application.name}.log
+  logback:
+    rollingpolicy:
+      max-file-size: ${LOG_MAX_FILE_SIZE:10MB}
+      max-history: 7
+      total-size-cap: 1GB
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  tracing:
+    sampling:
+      probability: ${TRACING_SAMPLING_PROBABILITY:0.1}
+    export:
+      zipkin:
+        endpoint: ${ZIPKIN_ENDPOINT:http://localhost:9411/api/v2/spans}
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true

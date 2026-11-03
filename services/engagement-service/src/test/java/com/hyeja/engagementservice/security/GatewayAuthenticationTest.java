@@ -107,4 +107,10 @@ class GatewayAuthenticationTest {
         mvc.perform(get("/actuator/health")).andExpect(status().isOk());
         mvc.perform(get("/actuator/env")).andExpect(status().isUnauthorized());
     }
+
+    @Test void internalEndpointsDoNotRequireGatewayAuthentication() throws Exception {
+        mvc.perform(get("/internal/test")).andExpect(status().isNotFound());
+        mvc.perform(get("/internal/test").header("X-Gateway-Assertion", "invalid"))
+                .andExpect(status().isNotFound());
+    }
 }

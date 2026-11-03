@@ -1,7 +1,7 @@
 name: hyeja
 
 x-app-environment: &app-environment
-  SPRING_PROFILES_ACTIVE: docker
+  SPRING_PROFILES_ACTIVE: ${APP_PROFILES:-docker}
   SPRING_CONFIG_IMPORT: configserver:https://config-service:8888
   CONFIG_SERVER_URL: https://config-service:8888
   EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-service:8761/eureka/
@@ -23,14 +23,14 @@ x-app-environment: &app-environment
 
 x-config-client-environment: &config-client-environment
   <<: *app-environment
+  MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,info,prometheus
+  MONITORING_USERNAME: monitoring
+  MONITORING_PASSWORD: ${MONITORING_PASSWORD:?Set a separate MONITORING_PASSWORD (16+ characters)}
   SPRING_CLOUD_CONFIG_URI: https://config-service:8888
   SPRING_CLOUD_CONFIG_TLS_ENABLED: "true"
   SPRING_CLOUD_CONFIG_TLS_TRUST_STORE: file:/run/config-trust/truststore.p12
   SPRING_CLOUD_CONFIG_TLS_TRUST_STORE_TYPE: PKCS12
   SPRING_CLOUD_CONFIG_TLS_TRUST_STORE_PASSWORD: ${CONFIG_TLS_TRUST_STORE_PASSWORD:?Set CONFIG_TLS_TRUST_STORE_PASSWORD}
-
-x-config-client-volumes: &config-client-volumes
-  - ./docker/config-tls/trust:/run/config-trust:ro
 
 x-business-environment: &business-environment
   <<: *config-client-environment
@@ -133,7 +133,7 @@ services:
     entrypoint: ["/bin/bash", "-ec"]
     command:
       - |
-        for topic in member-registered policy-updated policy-updated-dlt notification-created hyeja-config-bus; do
+        for topic in member-registered policy-updated policy-updated-dlt notification-created member-withdrawn member-withdrawn-dlt hyeja-config-bus; do
           /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic "$$topic" --partitions 1 --replication-factor 1
         done
 
@@ -142,6 +142,33 @@ services:
     restart: unless-stopped
     ports:
       - "127.0.0.1:${ZIPKIN_HOST_PORT:-9411}:9411"
+
+  prometheus:
+    image: prom/prometheus:v3.13.3
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=7d
+    ports:
+      - "127.0.0.1:${PROMETHEUS_HOST_PORT:-9090}:9090"
+    volumes:
+      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./docker/prometheus/recording-rules.yml:/etc/prometheus/recording-rules.yml:ro
+      - prometheus-data:/prometheus
+    secrets:
+      - monitoring_password
+    depends_on:
+      gateway-service:
+        condition: service_healthy
+      user-service:
+        condition: service_healthy
+      policy-service:
+        condition: service_healthy
+      engagement-service:
+        condition: service_healthy
+      recommendation-service:
+        condition: service_healthy
 
   discovery-service:
     <<: *app
@@ -186,6 +213,7 @@ services:
       CONFIG_RECOMMENDATION_PASSWORD: ${CONFIG_RECOMMENDATION_PASSWORD:?Set CONFIG_RECOMMENDATION_PASSWORD}
       CONFIG_ADMIN_USERNAME: ${CONFIG_ADMIN_USERNAME:-config-admin}
       CONFIG_ADMIN_PASSWORD: ${CONFIG_ADMIN_PASSWORD:?Set a separate CONFIG_ADMIN_PASSWORD (16+ characters)}
+      CONFIG_ALLOWED_PROFILES: ${CONFIG_ALLOWED_PROFILES:-default,local,dev,docker,debug}
       MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,info,busrefresh
       EUREKA_INSTANCE_PREFER_IP_ADDRESS: "false"
       EUREKA_INSTANCE_HOSTNAME: config-service
@@ -222,7 +250,9 @@ services:
       SERVER_PORT: "8000"
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env (at least 32 UTF-8 bytes)}
       GATEWAY_ENGAGEMENT_SECRET: ${GATEWAY_ENGAGEMENT_SECRET:?Set a separate internal JWT key (at least 32 UTF-8 bytes)}
-    volumes: *config-client-volumes
+    volumes:
+      - ./docker/config-tls/trust:/run/config-trust:ro
+      - gateway-logs:/app/logs
     ports:
       - "127.0.0.1:${GATEWAY_HOST_PORT:-8000}:8000"
     depends_on:
@@ -267,7 +297,9 @@ services:
       MANAGEMENT_HEALTH_MAIL_ENABLED: "false"
       MAIL_USERNAME: ${MAIL_USERNAME:-}
       MAIL_PASSWORD: ${MAIL_PASSWORD:-}
-    volumes: *config-client-volumes
+    volumes:
+      - ./docker/config-tls/trust:/run/config-trust:ro
+      - user-logs:/app/logs
     depends_on: *business-dependencies
 
   policy-service:
@@ -293,7 +325,9 @@ services:
       OPEN_AI_KEY: ${OPEN_AI_KEY:-}
       OPEN_AI_MODEL: ${OPEN_AI_MODEL:-gpt-4o-mini}
       YOUTH_API_KEY: ${YOUTH_API_KEY:-}
-    volumes: *config-client-volumes
+    volumes:
+      - ./docker/config-tls/trust:/run/config-trust:ro
+      - policy-logs:/app/logs
     depends_on: *business-dependencies
 
   engagement-service:
@@ -317,9 +351,18 @@ services:
       SPRING_DATASOURCE_URL: jdbc:mariadb://mariadb:3306/engagement_db
       SPRING_DATASOURCE_USERNAME: engagement_app
       SPRING_DATASOURCE_PASSWORD: ${ENGAGEMENT_DB_PASSWORD:?Set ENGAGEMENT_DB_PASSWORD in .env}
-      MAIL_USERNAME: ${MAIL_USERNAME:-}
-      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
-    volumes: *config-client-volumes
+      SPRING_MAIL_HOST: ${MAIL_HOST:-smtp.gmail.com}
+      SPRING_MAIL_PORT: ${MAIL_PORT:-587}
+      SPRING_MAIL_USERNAME: ${MAIL_USERNAME:-}
+      SPRING_MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      ADMIN_ALERT_EMAIL: ${ADMIN_ALERT_EMAIL:-}
+      ADMIN_DLT_THRESHOLD: ${ADMIN_DLT_THRESHOLD:-3}
+      ADMIN_DLT_RETRY_INTERVAL_MS: ${ADMIN_DLT_RETRY_INTERVAL_MS:-60000}
+      # Compose readiness must not depend on the external SMTP server.
+      MANAGEMENT_HEALTH_MAIL_ENABLED: "false"
+    volumes:
+      - ./docker/config-tls/trust:/run/config-trust:ro
+      - engagement-logs:/app/logs
     depends_on: *business-dependencies
 
   recommendation-service:
@@ -335,10 +378,22 @@ services:
       SERVER_PORT: "8084"
       OPEN_AI_KEY: ${OPEN_AI_KEY:-}
       OPEN_AI_MODEL: ${OPEN_AI_MODEL:-gpt-4o-mini}
-    volumes: *config-client-volumes
+    volumes:
+      - ./docker/config-tls/trust:/run/config-trust:ro
+      - recommendation-logs:/app/logs
     depends_on: *business-dependencies
+
+secrets:
+  monitoring_password:
+    environment: MONITORING_PASSWORD
 
 volumes:
   mariadb-data:
   redis-data:
+  gateway-logs:
+  user-logs:
+  policy-logs:
+  engagement-logs:
+  recommendation-logs:
+  prometheus-data:
   kafka-data:

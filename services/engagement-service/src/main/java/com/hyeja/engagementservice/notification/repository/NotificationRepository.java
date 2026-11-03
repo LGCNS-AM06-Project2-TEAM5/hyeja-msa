@@ -7,6 +7,7 @@ import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -15,7 +16,9 @@ import org.springframework.stereotype.Repository;
 public interface NotificationRepository extends JpaRepository<Notification, Long> {
 
     // 회원 탈퇴 시 그 회원의 알림을 모두 지웁니다 (hard delete).
-    void deleteByMemberId(Long memberId);
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("delete from Notification notification where notification.memberId = :memberId")
+    int deleteAllByMemberId(@Param("memberId") Long memberId);
 
     Optional<Notification> findByNotificationIdAndMemberIdAndDeletedAtIsNull(
             Long notificationId,

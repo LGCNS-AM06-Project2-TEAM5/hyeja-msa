@@ -89,7 +89,7 @@
 }
 ```
 
-예시 날짜·ID는 설명용이며 실제 테스트 시 로컬 policy_snapshot에 데이터를 준비해야 한다.
+예시 날짜·ID는 설명용입니다. 실제 테스트 시에는 F5 정책 조회에 응답하는 서버가 필요합니다. 관심 등록 시 로컬 policy_snapshot은 F5 응답으로 생성·갱신됩니다.
 
 FavoriteItem 필드:
 
@@ -108,7 +108,7 @@ FavoriteItem 필드:
 
 분류 코드: `MONTHLY_RENT`=월세, `JEONSE`=전세, `PURCHASE`=청약·구입, `PUBLIC_RENT`=공공임대, `OTHER`=기타 주거. category_names와 category_codes를 배열 인덱스로 짝지으면 안 된다.
 
-오류: 공통 인증 오류, 404 `POLICY_001`, 409 `FAVORITE_001`.
+오류: 공통 인증 오류, 404 `POLICY_001`, 409 `FAVORITE_001`, 503 `SERVER_002`.
 
 ### 3.2 관심 목록·검색
 
