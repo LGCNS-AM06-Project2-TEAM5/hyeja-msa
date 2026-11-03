@@ -3,11 +3,20 @@ package com.hyeja.userservice.domain.member.converter;
 import com.hyeja.userservice.domain.member.dto.MemberAccountResponseDTO;
 import com.hyeja.userservice.domain.member.dto.MemberFindEmailResponseDTO;
 import com.hyeja.userservice.domain.member.dto.MemberLoginResponseDTO;
+import com.hyeja.userservice.domain.member.dto.MemberSignupRequestDTO;
 import com.hyeja.userservice.domain.member.entity.Member;
 
 public final class MemberConverter {
 
     private MemberConverter() {
+    }
+
+    public static Member toMember(MemberSignupRequestDTO request, String encodedPassword) {
+        return Member.builder()
+                .email(request.getEmail())
+                .password(encodedPassword)
+                .nickname(request.getNickname())
+                .build();
     }
 
     public static MemberAccountResponseDTO toMemberAccountResponseDTO(Member member) {

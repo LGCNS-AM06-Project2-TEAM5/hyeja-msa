@@ -4,6 +4,7 @@ import com.hyeja.userservice.domain.member.dto.MemberAccountResponseDTO;
 import com.hyeja.userservice.domain.member.dto.MemberFindEmailResponseDTO;
 import com.hyeja.userservice.domain.member.dto.MemberLoginRequestDTO;
 import com.hyeja.userservice.domain.member.dto.MemberLoginResponseDTO;
+import com.hyeja.userservice.domain.member.dto.MemberSignupRequestDTO;
 import com.hyeja.userservice.domain.member.service.MemberService;
 import com.hyeja.userservice.global.apiPayload.ApiResponse;
 import jakarta.validation.Valid;
@@ -25,6 +26,13 @@ import org.springframework.web.bind.annotation.RestController;
 public class MemberController {
 
     private final MemberService memberService;
+
+    @PostMapping
+    public ApiResponse<MemberAccountResponseDTO> signup(
+            @Valid @RequestBody MemberSignupRequestDTO request
+    ) {
+        return ApiResponse.onSuccess(memberService.signup(request));
+    }
 
     @PostMapping("/login")
     public ApiResponse<MemberLoginResponseDTO> login(@Valid @RequestBody MemberLoginRequestDTO request) {
