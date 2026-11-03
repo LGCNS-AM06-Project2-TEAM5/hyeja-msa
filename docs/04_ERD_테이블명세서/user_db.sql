@@ -1,6 +1,6 @@
 -- user-service · user_db
--- 기준: hyeja-msa user-service JPA 엔티티 (Member, Profile, Region, BaseEntity)
--- MSA 변경: profile → region FK 제거(지역 코드 값만 저장), region은 서버 시작 시 CSV로 따로 채우는 읽기 전용 복사본입니다(policy_db와 실시간 동기화하지 않습니다)
+-- 기준: hyeja-msa user-service JPA 엔티티 (Member, Profile, Region, MemberOutbox, BaseEntity)
+-- MSA 변경: profile → region FK 제거(지역 코드 값만 저장), region은 서버 시작 시 CSV로 따로 채우는 읽기 전용 복사본입니다(policy_db와 실시간 동기화하지 않습니다), member-withdrawn 발행용 member_outbox 추가
 -- COMMENT = 논리명 / 열 끝 주석 = 값·설명
 
 CREATE TABLE `member` (
@@ -42,3 +42,16 @@ CREATE TABLE `region` (
   `deleted_at`               DATETIME(6)   NULL      COMMENT '삭제 시각',  -- 소프트 삭제용. 현재 이 값을 채우는 코드는 없습니다.
   PRIMARY KEY (`region_code`)
 ) COMMENT = '시·군·구 (읽기 전용 복사본)';  -- 서버가 켜질 때 csv/region_sigungu.csv로 채웁니다. 있는 코드는 이름만 갱신하고 없는 코드는 추가합니다. policy를 호출하지 않습니다.
+
+CREATE TABLE `member_outbox` (
+  `outbox_id`                BIGINT        NOT NULL  AUTO_INCREMENT COMMENT 'Outbox ID',  -- AUTO_INCREMENT. Relay가 이 순서대로 발행합니다.
+  `event_id`                 VARCHAR(36)   NOT NULL  COMMENT '이벤트 ID',  -- UUID. 구독 쪽(engagement)이 중복 처리를 확인할 때 씁니다. UNIQUE (엔티티에 키 이름이 없어 DB가 이름을 정합니다)
+  `aggregate_id`             VARCHAR(20)   NOT NULL  COMMENT '회원 ID',  -- member_id의 문자열 값입니다. FK는 두지 않습니다. Kafka message key로 씁니다.
+  `event_type`               VARCHAR(50)   NOT NULL  COMMENT '이벤트 종류',  -- member-withdrawn (Kafka 토픽 이름과 같습니다)
+  `payload`                  TEXT          NOT NULL  COMMENT '본문',  -- eventId, eventType, eventVersion, occurredAt, aggregateId, memberId (JSON 문자열)
+  `created_at`               DATETIME(6)   NOT NULL  COMMENT '생성 시각',  -- 회원 탈퇴와 같은 트랜잭션에서 기록합니다. 탈퇴가 롤백되면 이 행도 남지 않습니다.
+  `published_at`             DATETIME(6)   NULL      COMMENT '발행 시각',  -- Relay(MemberOutboxRelay)가 Kafka 전송에 성공하면 채웁니다. NULL이면 아직 보내지 않은 이벤트이며 다음 스케줄에서 다시 보냅니다.
+  PRIMARY KEY (`outbox_id`),
+  UNIQUE KEY (`event_id`),
+  KEY `idx_member_outbox_unpublished` (`published_at`, `outbox_id`)
+) COMMENT = '회원 이벤트 발행 대기';
