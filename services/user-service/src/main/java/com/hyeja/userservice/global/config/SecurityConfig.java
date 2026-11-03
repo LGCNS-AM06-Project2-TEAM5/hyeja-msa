@@ -43,6 +43,8 @@ public class SecurityConfig {
                                 "/actuator/health",
                                 "/actuator/health/**").permitAll()
                         .requestMatchers("/h2-console/**", "/error").permitAll()
+                        // 서비스 간 호출(Feign) 전용. Gateway가 라우팅하지 않아 외부에 노출되지 않습니다.
+                        .requestMatchers("/internal/**").permitAll()
                         .anyRequest().authenticated())
                 .exceptionHandling(exception -> exception
                         .authenticationEntryPoint((request, response, error) ->
