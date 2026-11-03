@@ -2,11 +2,16 @@ package com.hyeja.policyservice.cardnews.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 
+import com.hyeja.policyservice.cardnews.dto.MemberCardNewsResponseDTO;
 import com.hyeja.policyservice.cardnews.entity.CardNews;
+import com.hyeja.policyservice.client.user.MemberProfileReader;
+import com.hyeja.policyservice.client.user.dto.MemberProfileDTO;
 import com.hyeja.policyservice.cardnews.repository.CardNewsRepository;
 import com.hyeja.policyservice.policy.entity.Policy;
 import com.hyeja.policyservice.policy.entity.PolicyRegion;
@@ -31,8 +36,49 @@ class CardNewsServiceTest {
     // 한국 2026-09-28 01:00 = UTC 2026-09-27 16:00. 서버 기본 시간대(UTC)로 계산하면 날짜가 하루 어긋나는 시각입니다.
     private static final Clock KOREA_CLOCK = Clock.fixed(
             Instant.parse("2026-09-27T16:00:00Z"), ZoneId.of("Asia/Seoul"));
+    private final MemberProfileReader memberProfileReader = mock(MemberProfileReader.class);
     private final CardNewsService service = new CardNewsService(
-            cardNewsRepository, policyRegionRepository, KOREA_CLOCK);
+            cardNewsRepository, policyRegionRepository, memberProfileReader, KOREA_CLOCK);
+
+    // 1차와 같이 회원 시군구 코드와 같은 시도의 "xx000" 코드로 대표 카드 4건을 찾습니다.
+    @Test
+    void findsMemberHomeCardNewsByMemberRegionAndSido() {
+        given(memberProfileReader.getActiveProfile(7L)).willReturn(new MemberProfileDTO(
+                7L, LocalDate.of(2000, 3, 15), new MemberProfileDTO.RegionDTO("11440", "서울특별시 마포구"),
+                null, true, null));
+        Policy policy = policy();
+        when(cardNewsRepository.findMemberHomeCardNews(eq("11440"), eq("11000"),
+                eq(LocalDate.of(2026, 9, 28)), any()))
+                .thenReturn(List.of(card(policy, 1L, "정책명", "카드 본문")));
+
+        List<MemberCardNewsResponseDTO> response = service.getMemberCardNews(7L);
+
+        assertThat(response).containsExactly(new MemberCardNewsResponseDTO(
+                "policy-1", "청년 월세 지원", "정제된 정책 설명", LocalDate.of(2026, 10, 3)));
+    }
+
+    // 탈퇴한 회원은 정책 목록·상세와 같이 MEMBER_001입니다.
+    @Test
+    void rejectsMemberHomeCardNewsForWithdrawnMember() {
+        given(memberProfileReader.getActiveProfile(7L))
+                .willThrow(new GeneralException(ErrorStatus.MEMBER_NOT_FOUND));
+
+        assertThatThrownBy(() -> service.getMemberCardNews(7L))
+                .isInstanceOfSatisfying(GeneralException.class,
+                        exception -> assertThat(exception.getCode()).isEqualTo(ErrorStatus.MEMBER_NOT_FOUND));
+    }
+
+    // F6 계약대로 user가 응답하지 않으면 비로그인 홈 카드뉴스로 대신합니다.
+    @Test
+    void fallsBackToGuestHomeCardNewsWhenUserServiceIsUnavailable() {
+        given(memberProfileReader.getActiveProfile(7L))
+                .willThrow(new GeneralException(ErrorStatus.USER_SERVICE_UNAVAILABLE));
+        when(cardNewsRepository.findGuestHomeCardNews(eq(LocalDate.of(2026, 9, 28)), any()))
+                .thenReturn(List.of(card(policy(), 1L, "정책명", "카드 본문")));
+
+        assertThat(service.getMemberCardNews(7L)).containsExactly(new MemberCardNewsResponseDTO(
+                "policy-1", "청년 월세 지원", "정제된 정책 설명", LocalDate.of(2026, 10, 3)));
+    }
 
     @Test
     void returnsPopupDataForAuthenticatedMember() {
