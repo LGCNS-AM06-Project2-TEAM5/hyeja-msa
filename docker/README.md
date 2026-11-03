@@ -139,9 +139,10 @@ develop에 머지되면 CD가 서비스 7개 이미지를 GHCR에 올립니다.
 | 실행 방법 | 용도 |
 |---|---|
 | `./scripts/deploy.sh` | develop 태그 이미지로 배포 |
-| `IMAGE_TAG=<커밋 SHA> ./scripts/deploy.sh` | 특정 버전으로 배포하거나 되돌리기 |
+| `IMAGE_TAG=<전체 커밋 SHA 40자> ./scripts/deploy.sh` | 특정 버전으로 배포하거나 되돌리기 |
 | `SKIP_PULL=1 ./scripts/deploy.sh` | pull 없이 로컬 이미지로 확인 |
 
+CD 이미지는 linux/amd64로만 발행되므로 Apple Silicon 맥에서는 `DOCKER_DEFAULT_PLATFORM=linux/amd64 ./scripts/deploy.sh`로 실행합니다(에뮬레이션이라 기동이 느릴 수 있습니다).
 GHCR 패키지가 비공개면 pull 전에 `read:packages` 권한이 있는 GitHub 토큰으로 `docker login ghcr.io`를 먼저 합니다.
 CD 이미지가 올라오기 전에는 `docker compose -f compose.yaml -f compose.deploy.yaml build`로 같은 이름의 이미지를 로컬에서 만들어 확인할 수 있습니다.
 
