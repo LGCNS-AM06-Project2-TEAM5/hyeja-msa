@@ -29,7 +29,7 @@
 |---|---|---|
 | 제공 → policy, recommendation | Feign | 회원의 관심 정책 ID 일괄 조회 |
 | 사용 → policy | Feign | 관심 등록 시 정책 존재·스냅샷 확인 |
-| 구독 | Kafka `policy-updated` | 정책 스냅샷 읽기 모델 갱신 |
+| 구독 | Kafka `policy-updated` | 정책 스냅샷 읽기 모델 갱신. `PolicyUpdatedListener`가 받아 `PolicySnapshotUpdater`로 반영하고, 같은 `eventId`는 한 번만 반영, 실패 시 3번 재시도 후 `policy-updated-dlt`. Kafka 주소가 있는 환경(Compose)에서만 켜짐 |
 | 발행·구독 | Kafka `notification-created` | 내부 Worker가 마감 알림 메일 발송 (여유 있을 때, #1 확정) |
 | 구독 | Kafka `member-withdrawn` | 탈퇴 회원의 관심 정책·알림 정리. `eventId`로 중복 무시, 실패 시 재시도 후 DLT (#1 확정) |
 

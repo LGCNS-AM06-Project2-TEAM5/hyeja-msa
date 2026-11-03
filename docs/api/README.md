@@ -110,6 +110,8 @@ Gateway 라우팅과 인증 규칙은 [infra/gateway-service](../../infra/gatewa
 
 안전장치: 발행은 DB 커밋 뒤(Outbox 권장), 구독은 `eventId`로 중복 무시, 실패 시 재시도 후 DLT.
 
+`policy-updated` 구독(engagement, 그룹 `engagement-policy-snapshot`): `policy_snapshot`을 넣거나 고치고 `deleted=true`면 삭제 표시합니다. 처리한 `eventId`는 `processed_policy_event`에 남겨 다시 오면 건너뜁니다. 실패하면 1초 간격으로 3번 더 시도하고, 그래도 실패하거나 JSON이 깨졌으면 `policy-updated-dlt`로 보냅니다.
+
 
 ## F2 정책 후보 조회 (Issue #53)
 
