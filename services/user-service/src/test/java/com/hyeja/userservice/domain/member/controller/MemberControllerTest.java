@@ -33,6 +33,20 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 class MemberControllerTest {
 
+    private static final String SIGNUP_BODY = """
+            {
+              "email": "hyeja@example.com",
+              "password": "hyeja1234!",
+              "nickname": "민지",
+              "profile": {
+                "birth": "2000-03-15",
+                "regionCode": "11440",
+                "employmentCode": "EMPLOYED",
+                "houselessYn": true
+              }
+            }
+            """;
+
     private final MemberService memberService = mock(MemberService.class);
     private MockMvc mvc;
 
@@ -50,6 +64,78 @@ class MemberControllerTest {
     @AfterEach
     void clearSecurityContext() {
         SecurityContextHolder.clearContext();
+    }
+
+    @Test
+    void signsUpMemberAndProfile() throws Exception {
+        when(memberService.signup(any())).thenReturn(MemberAccountResponseDTO.builder()
+                .memberId(1L)
+                .email("hyeja@example.com")
+                .nickname("민지")
+                .createdAt(LocalDateTime.of(2026, 11, 3, 10, 0))
+                .build());
+
+        mvc.perform(post("/api/members")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(SIGNUP_BODY))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("SUCCESS_001"))
+                .andExpect(jsonPath("$.result.memberId").value(1))
+                .andExpect(jsonPath("$.result.email").value("hyeja@example.com"))
+                .andExpect(jsonPath("$.result.nickname").value("민지"));
+    }
+
+    @Test
+    void rejectsSignupWithoutProfile() throws Exception {
+        mvc.perform(post("/api/members")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "email": "hyeja@example.com",
+                                  "password": "hyeja1234!",
+                                  "nickname": "민지"
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("COMMON_003"))
+                .andExpect(jsonPath("$.result.profile").exists());
+        verifyNoInteractions(memberService);
+    }
+
+    @Test
+    void rejectsSignupWithInvalidNestedProfile() throws Exception {
+        mvc.perform(post("/api/members")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "email": "hyeja@example.com",
+                                  "password": "hyeja1234!",
+                                  "nickname": "민지",
+                                  "profile": {
+                                    "birth": "2099-01-01",
+                                    "regionCode": "",
+                                    "employmentCode": "EMPLOYED",
+                                    "houselessYn": true
+                                  }
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("COMMON_003"))
+                .andExpect(jsonPath("$.result['profile.birth']").exists())
+                .andExpect(jsonPath("$.result['profile.regionCode']").exists());
+        verifyNoInteractions(memberService);
+    }
+
+    @Test
+    void returnsConflictWhenSignupEmailIsDuplicated() throws Exception {
+        when(memberService.signup(any()))
+                .thenThrow(new GeneralException(ErrorStatus.MEMBER_EMAIL_DUPLICATED));
+
+        mvc.perform(post("/api/members")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(SIGNUP_BODY))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("MEMBER_002"));
     }
 
     @Test
