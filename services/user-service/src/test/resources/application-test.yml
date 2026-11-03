@@ -5,6 +5,8 @@ spring:
 
   # Config Server(8888)에 접속하지 않음
   cloud:
+    bus:
+      enabled: false
     config:
       enabled: false
 

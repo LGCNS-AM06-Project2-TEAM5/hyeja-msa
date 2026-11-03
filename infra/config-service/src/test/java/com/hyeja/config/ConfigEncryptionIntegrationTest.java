@@ -29,6 +29,7 @@ import static org.springframework.test.web.servlet.setup.MockMvcBuilders.webAppC
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {
         "spring.cloud.config.enabled=false", "eureka.client.enabled=false",
+        "spring.cloud.bus.enabled=false",
         "spring.cloud.config.server.health.enabled=false",
         "encrypt.key=test-only-config-encryption-key-at-least-32-bytes",
         "config-security.readers.gateway-service.username=config-gateway", "config-security.readers.gateway-service.password=test-gateway-password-1234",

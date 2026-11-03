@@ -6,6 +6,8 @@ spring:
         options:
           model: test-model
   cloud:
+    bus:
+      enabled: false
     config:
       enabled: false
   datasource:
