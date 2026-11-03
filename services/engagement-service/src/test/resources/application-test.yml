@@ -18,5 +18,10 @@ eureka:
   client:
     enabled: false
 
+management:
+  health:
+    mail:
+      enabled: false
+
 internal-auth:
   secret: test-only-internal-key-at-least-32-bytes-long
