@@ -105,8 +105,28 @@ Gateway 라우팅과 인증 규칙은 [infra/gateway-service](../../infra/gatewa
 - Kafka message key는 `memberId`의 문자열 표현을 사용합니다.
 - User Service는 Member·Profile 탈퇴 처리와 같은 트랜잭션에 Outbox 행을 기록합니다.
 
-`policy-updated` 본문(안): `policyId, policyName, categories, supportContent, applyEndDate, applyPeriodCode, applyUrl, activeYn, deleted`
+`policy-updated` 본문: `policyId, policyName, categories, supportContent, applyEndDate, applyPeriodCode, applyUrl, activeYn, deleted`
 — engagement의 관심 목록 응답과 키워드 검색(정책명·지원 내용)에 필요한 값입니다.
+공통 필드와 본문은 한 객체에 같이 담고, enum은 이름 그대로 보냅니다. 메시지 key는 `policyId`라서 같은 정책의 이벤트는 순서대로 도착합니다.
+
+```json
+{
+  "eventId": "6f1c2a0e-3b5d-4c8e-9a7f-2d4e6b8c0a12",
+  "eventType": "policy-updated",
+  "eventVersion": 1,
+  "occurredAt": "2026-11-03T14:00:00+09:00",
+  "aggregateId": "20250101005400210001",
+  "policyId": "20250101005400210001",
+  "policyName": "청년 월세 지원",
+  "categories": ["MONTHLY_RENT"],
+  "supportContent": "월 최대 20만 원",
+  "applyEndDate": "2026-12-31",
+  "applyPeriodCode": "SPECIFIC_PERIOD",
+  "applyUrl": "https://example.com/apply",
+  "activeYn": true,
+  "deleted": false
+}
+```
 
 안전장치: 발행은 DB 커밋 뒤(Outbox 권장), 구독은 `eventId`로 중복 무시, 실패 시 재시도 후 DLT.
 
