@@ -39,3 +39,4 @@
 - profile → region FK를 지우고 `region_code` 값만 저장합니다.
 - 탈퇴 시 favorite·notification을 직접 지우지 않습니다.
 - 탈퇴 이벤트는 Member·Profile 변경과 같은 트랜잭션에 Outbox로 기록해 누락을 방지합니다.
+- Relay는 미발행 Outbox를 순서대로 `member-withdrawn` 토픽에 전송하고 성공한 행에 `published_at`을 기록합니다.
