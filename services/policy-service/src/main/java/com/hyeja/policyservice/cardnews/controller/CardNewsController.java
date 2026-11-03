@@ -4,6 +4,7 @@ import com.hyeja.policyservice.cardnews.dto.CardNewsDetailResponseDTO;
 import com.hyeja.policyservice.cardnews.dto.CardNewsResponseDTO;
 import com.hyeja.policyservice.cardnews.dto.MemberCardNewsResponseDTO;
 import com.hyeja.policyservice.cardnews.service.CardNewsService;
+import com.hyeja.policyservice.client.engagement.FavoriteReader;
 import com.hyeja.policyservice.global.apiPayload.ApiResponse;
 import com.hyeja.policyservice.global.auth.LoginMemberId;
 import java.util.List;
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class CardNewsController {
 
     private final CardNewsService cardNewsService;
+    private final FavoriteReader favoriteReader;
 
     // 비회원 메인 화면에 노출할 마감 임박 카드뉴스(최대 4건)
     @GetMapping("/card-news/guest")
@@ -40,6 +42,8 @@ public class CardNewsController {
     public ApiResponse<CardNewsDetailResponseDTO> getCardNewsDetail(
             @PathVariable String policyId,
             @LoginMemberId(required = false) Long memberId) {
-        return ApiResponse.onSuccess(cardNewsService.getCardNewsDetail(policyId, memberId));
+        CardNewsDetailResponseDTO detail = cardNewsService.getCardNewsDetail(policyId, memberId);
+        // 하트는 서비스의 DB 트랜잭션이 끝난 뒤 묻습니다. engagement가 응답하지 않으면 false입니다.
+        return ApiResponse.onSuccess(memberId == null ? detail : detail.withFavorite(favoriteReader.isFavorite(memberId, policyId)));
     }
 }

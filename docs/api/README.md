@@ -26,7 +26,7 @@ Gateway 라우팅과 인증 규칙은 [infra/gateway-service](../../infra/gatewa
 | F1 | recommendation → user | 회원의 내 조건 조회 | `PolicySearchService` → `ProfileService.getActiveProfile` | 검색 실패 응답 | 확정 (user) |
 | F2 | recommendation → policy | 정책 후보 일괄 조회 (판정에 필요한 조건과 신청 지역 포함) | `PolicyCandidateController` → `PolicyCandidateService` → `PolicyRepository.searchActivePolicies` | 검색 실패 응답 | 계약 합의·구현 완료 (아래 F2 계약) |
 | F3 | recommendation → engagement | 관심 여부 일괄 조회 | `FavoriteRepository.findActivePolicyIds` | 하트 없이 응답 | 설계서 |
-| F4 | policy → engagement | 관심 여부 일괄 조회 (목록·상세·카드뉴스) | `PolicyService`, `CardNewsService` | 하트 없이 응답 | 설계서 |
+| F4 | policy → engagement | 관심 여부 일괄 조회 (목록·상세·카드뉴스) | `PolicyMemberService`, `CardNewsController` → `FavoriteReader` | 하트 없이 응답 | policy 호출 구현. F3와 같은 `POST /internal/favorites/active-policy-ids`(요청 `memberId`·`policyIds` 20개까지, 응답 관심 등록한 정책 ID 목록) |
 | F5 | engagement → policy | 관심 등록 시 정책 존재·스냅샷 확인 | `PolicySnapshotController` → `PolicySnapshotService` → `PolicyRepository.findById` | 등록 실패 안내 | 계약 합의·이번 변경에서 구현 (아래 F5 계약) |
 | F6 | policy → user | 회원의 내 조건 조회 (`/housing/me` 필터, 상세 판정, 회원 카드뉴스) | `PolicyService` 200·249행, `CardNewsService` 60행 → `ProfileService` | 비로그인 응답과 같게 | 확정 (user) |
 
@@ -88,6 +88,22 @@ Gateway 라우팅과 인증 규칙은 [infra/gateway-service](../../infra/gatewa
 | `member-withdrawn` | user | engagement | 탈퇴 커밋 후 | 관심 정책·알림 정리 | **구현 (#1 확정)** · 실패하면 재시도 후 DLT. Saga 보상은 이번 범위에 넣지 않고, 여유가 있으면 추가 기술로 검토 |
 
 공통 필드: `eventId`(중복 처리 확인), `eventType`, `eventVersion`, `occurredAt`, `aggregateId`. 개인정보와 토큰은 넣지 않습니다.
+
+`member-withdrawn` 본문:
+
+```json
+{
+  "eventId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+  "eventType": "member-withdrawn",
+  "eventVersion": 1,
+  "occurredAt": "2026-11-03T17:30:00+09:00",
+  "aggregateId": "1",
+  "memberId": 1
+}
+```
+
+- Kafka message key는 `memberId`의 문자열 표현을 사용합니다.
+- User Service는 Member·Profile 탈퇴 처리와 같은 트랜잭션에 Outbox 행을 기록합니다.
 
 `policy-updated` 본문: `policyId, policyName, categories, supportContent, applyEndDate, applyPeriodCode, applyUrl, activeYn, deleted`
 — engagement의 관심 목록 응답과 키워드 검색(정책명·지원 내용)에 필요한 값입니다.

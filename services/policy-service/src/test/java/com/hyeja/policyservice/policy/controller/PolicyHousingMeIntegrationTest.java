@@ -43,7 +43,7 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
-// 로그인 회원 정책 목록(/housing/me): 헤더 → user(F6) Feign → 1차 회원 쿼리까지 실제로 이어지는지 봅니다.
+// 로그인 회원 정책 목록(/housing/me): 헤더 → user(F6) Feign → 1차 회원 쿼리 → engagement(F4) 하트까지 실제로 이어지는지 봅니다.
 // 목록은 user를 기다리는 동안 트랜잭션 밖에서 조회하므로, 테스트 데이터는 커밋하고 끝나면 직접 지웁니다.
 // 회원: 2000-03-15생(기준일 2026-09-27에 만 26세), 마포구(11440), 취업, 무주택.
 @SpringBootTest
@@ -66,6 +66,8 @@ class PolicyHousingMeIntegrationTest {
     @DynamicPropertySource
     static void userServiceUrl(DynamicPropertyRegistry registry) {
         registry.add("spring.cloud.openfeign.client.config.userClient.url",
+                () -> "http://localhost:" + USER_SERVICE.getAddress().getPort());
+        registry.add("spring.cloud.openfeign.client.config.engagementClient.url",
                 () -> "http://localhost:" + USER_SERVICE.getAddress().getPort());
     }
 
@@ -98,8 +100,9 @@ class PolicyHousingMeIntegrationTest {
                 .andExpect(jsonPath("$.result.totalElements").value(2))
                 .andExpect(jsonPath("$.result.policies[0].policy_id").value("me-mapo"))
                 .andExpect(jsonPath("$.result.policies[0].regions[0].region_code").value("11440"))
-                .andExpect(jsonPath("$.result.policies[0].favorite_yn").value(false))
+                .andExpect(jsonPath("$.result.policies[0].favorite_yn").value(true))
                 .andExpect(jsonPath("$.result.policies[0].d_day").value(4))
+                .andExpect(jsonPath("$.result.policies[1].favorite_yn").value(false))
                 .andExpect(jsonPath("$.result.policies[1].policy_id").value("me-nation"))
                 .andExpect(jsonPath("$.result.policies[1].nationwide").value(true));
     }
@@ -184,6 +187,12 @@ class PolicyHousingMeIntegrationTest {
             server.createContext("/internal/members/3/profile", exchange -> respond(exchange, 500, """
                     {"isSuccess":false,"code":"SERVER_001","message":"서버 오류가 발생했습니다.","result":null}
                     """));
+            // engagement F4 대신: 요청 본문의 회원·정책 ID를 보고 관심 등록한 정책만 돌려줍니다.
+            server.createContext("/internal/favorites/active-policy-ids", exchange -> {
+                String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+                String result = body.contains("\"memberId\":1") && body.contains("me-mapo") ? "[\"me-mapo\"]" : "[]";
+                respond(exchange, 200, "{\"isSuccess\":true,\"code\":\"SUCCESS_001\",\"message\":\"성공입니다.\",\"result\":" + result + "}");
+            });
             server.start();
             return server;
         } catch (IOException e) {

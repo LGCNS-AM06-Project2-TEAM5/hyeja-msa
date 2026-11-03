@@ -46,7 +46,7 @@
 
 | 지점 | 쓰는 쪽 | 지금 동작 | 채우는 시점 |
 |---|---|---|---|
-| `PolicyMemberService.getMemberDetail(policy, memberId)` → `PolicyMemberDetailDTO` | 정책 상세 | F6 회원 조건으로 1차 판정 5가지(`PolicyEligibilityEvaluator`)를 채움. user가 응답하지 않으면 비로그인과 같은 값. 하트는 아직 false | engagement(F4) 연결 시 하트 |
+| `PolicyMemberService.getMemberDetail(policy, memberId)` → `PolicyMemberDetailDTO` | 정책 상세 | F6 회원 조건으로 1차 판정 5가지(`PolicyEligibilityEvaluator`)를 채움. user가 응답하지 않으면 판정 없이 응답. 하트는 engagement(F4) 관심 여부 | 연결됨 |
 | `PolicyChangedPublisher.publish(policyIds)` | 정책 수집 저장 후 | 부른 트랜잭션 안에서 `policy_outbox`에 이벤트를 적어 둠(`OutboxPolicyChangedPublisher`). 저장이 롤백되면 이벤트도 남지 않음. 커밋된 행은 `PolicyOutboxRelay`가 1초마다 `policy-updated` 토픽으로 보냄(key = policyId, Kafka 주소가 있는 Compose에서만) | 수집 코드에서 호출(예준님) |
 
 상세 응답의 `isFavorite`·`overallStatus`·`conditions`는 `PolicyMemberDetailDTO` 값을 그대로 옮겨 담으면 됩니다.
@@ -56,6 +56,7 @@
 | 호출 | 클라이언트 | 실패할 때 |
 |---|---|---|
 | F6 회원 조건 (→ user `GET /internal/members/{memberId}/profile`) | `UserClient`는 직접 쓰지 않고 `MemberProfileReader.getActiveProfile`을 씁니다 | `MEMBER_001`·`PROFILE_001`은 그대로 돌려주고, 연결 실패·시간 초과·5xx는 503 `SERVER_002`. 정책 상세와 회원 카드뉴스(`GET /api/policies/card-news`)는 이 경우 비로그인 응답으로 대신합니다 |
+| F4 관심 여부 (→ engagement `POST /internal/favorites/active-policy-ids`) | `EngagementClient`는 직접 쓰지 않고 `FavoriteReader`를 씁니다. 정책 ID를 20개씩 나눠 묻습니다 | 어떤 실패든 하트 없이(false) 응답합니다. 카드뉴스 상세는 DB 트랜잭션이 끝난 뒤 컨트롤러에서 묻습니다 |
 
 로그인 회원 기능 중 user(F6)를 쓰는 곳은 정책 상세 판정(`PolicyMemberService.getMemberDetail`), 내 조건 정책 목록(`GET /api/policies/housing/me`, `PolicyMemberController`), 회원 홈 카드뉴스입니다. `/housing/me`의 회원 조건 쿼리 `PolicyRepository.findHousingPoliciesForMember`는 1차 그대로이고 예준님 확인을 받고 넣었습니다.
 
@@ -154,7 +155,7 @@ PR #37의 공통 회원 헤더 리졸버는 현재 브랜치에 없어 직접 �
 - 지역은 페이지의 정책 ID로 한 번에 조회합니다. 응답의 snake_case 필드, 지역 목록·전국 여부·지역 요약, 한국 날짜 기준 d_day와 페이지 메타데이터는 원본과 동일합니다.
 - `GET /api/policies/{policyId}`: 원본 정책 상세 필드와 추가 자격 문구에 포함된 용어를 반환합니다. 없는 정책은 404 POLICY_001입니다. 상세는 원본의 ID 조회 동작을 유지하며 목록 필터를 추가 적용하지 않습니다.
 - 비회원 상세는 isFavorite=false, overallStatus=null, conditions=[]입니다. 회원 ID가 있으면 `PolicyMemberService.getMemberDetail(policy, memberId)` 결과를 응답에 옮깁니다.
-- `PolicyMemberService`는 로그인 상세에서 user(F6) 회원 조건으로 1차 판정을 채웁니다. user가 응답하지 않으면 비회원 상세와 같은 값이고, 하트는 F4 연결 전까지 false입니다.
+- `PolicyMemberService`는 로그인 상세에서 user(F6) 회원 조건으로 1차 판정을 채웁니다. user가 응답하지 않으면 판정 없이 응답하고, 하트는 engagement(F4)로 따로 확인합니다.
 - 현재 브랜치에는 #37의 공통 회원 헤더 리졸버가 없어 Gateway의 X-Member-Id를 직접 읽습니다. 잘못된 ID 또는 회원 ID 없이 Authorization만 전달된 상세 요청은 401로 거부하며 JWT를 직접 해석하지 않습니다.
 - 원본 목록 DTO의 Swagger 설명용 어노테이션은 현재 서비스에 Swagger 의존성이 없어 제외했으며 JSON 매핑은 유지했습니다. 지역 요약은 원본 summarize 규칙만 목록 Converter에 옮겼습니다.
 

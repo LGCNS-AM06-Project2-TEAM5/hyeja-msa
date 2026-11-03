@@ -35,7 +35,8 @@ public class PolicyOutbox {
     @Column(name = "event_type", nullable = false, length = 50, updatable = false)
     private String eventType;
 
-    @Column(name = "payload", nullable = false, columnDefinition = "TEXT", updatable = false)
+    // 본문에 TEXT인 supportContent가 통째로 들어가서 TEXT(64KB)보다 넉넉한 MEDIUMTEXT로 둡니다.
+    @Column(name = "payload", nullable = false, columnDefinition = "MEDIUMTEXT", updatable = false)
     private String payload;
 
     @Column(name = "created_at", nullable = false, updatable = false)

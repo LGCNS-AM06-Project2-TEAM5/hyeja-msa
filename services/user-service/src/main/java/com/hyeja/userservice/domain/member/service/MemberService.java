@@ -7,6 +7,7 @@ import com.hyeja.userservice.domain.member.dto.MemberLoginRequestDTO;
 import com.hyeja.userservice.domain.member.dto.MemberLoginResponseDTO;
 import com.hyeja.userservice.domain.member.dto.MemberSignupRequestDTO;
 import com.hyeja.userservice.domain.member.entity.Member;
+import com.hyeja.userservice.domain.member.event.MemberWithdrawnPublisher;
 import com.hyeja.userservice.domain.member.repository.MemberRepository;
 import com.hyeja.userservice.domain.profile.entity.Profile;
 import com.hyeja.userservice.domain.profile.repository.ProfileRepository;
@@ -35,6 +36,7 @@ public class MemberService {
     private final JwtProvider jwtProvider;
     private final TokenBlacklist tokenBlacklist;
     private final EmailVerificationService emailVerificationService;
+    private final MemberWithdrawnPublisher memberWithdrawnPublisher;
 
     @Transactional
     public MemberAccountResponseDTO signup(MemberSignupRequestDTO request) {
@@ -83,6 +85,7 @@ public class MemberService {
 
         profileRepository.findById(member.getEmail()).ifPresent(Profile::softDelete);
         member.softDelete();
+        memberWithdrawnPublisher.publish(memberId);
         logout(token);
     }
 
