@@ -31,6 +31,8 @@ dependencies {
     implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
     // user(F6)·engagement(F4) 내부 API 호출
     implementation 'org.springframework.cloud:spring-cloud-starter-openfeign'
+    // policy-updated 발행(policy_outbox → Kafka)
+    implementation 'org.springframework.boot:spring-boot-starter-kafka'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation('com.openai:openai-java:4.69.2') {
         exclude group: 'io.swagger.core.v3', module: 'swagger-annotations'
@@ -44,6 +46,7 @@ dependencies {
     testImplementation 'org.springframework.boot:spring-boot-starter-validation-test'
     testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
     testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'
+    testImplementation 'org.springframework.boot:spring-boot-starter-kafka-test'
     testCompileOnly 'org.projectlombok:lombok'
     testRuntimeOnly 'com.h2database:h2'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'

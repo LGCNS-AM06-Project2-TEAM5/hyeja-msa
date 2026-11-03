@@ -52,4 +52,8 @@ public class PolicyOutbox {
         this.payload = payload;
         this.createdAt = createdAt;
     }
+
+    public void markPublished(LocalDateTime publishedAt) {
+        this.publishedAt = publishedAt;
+    }
 }
