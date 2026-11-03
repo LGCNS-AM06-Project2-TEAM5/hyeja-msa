@@ -4,12 +4,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import jakarta.servlet.FilterChain;
+import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockFilterChain;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 class InternalTokenFilterTest {
@@ -46,6 +49,17 @@ class InternalTokenFilterTest {
         assertThat(SecurityContextHolder.getContext().getAuthentication().getAuthorities())
                 .extracting(Object::toString)
                 .containsExactly("ROLE_INTERNAL");
+    }
+
+    @Test
+    @DisplayName("헤더가 맞지 않으면 앞서 설정된 사용자 인증을 지운다")
+    void mismatchClearsExistingAuthentication() throws Exception {
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(1L, null, List.of(new SimpleGrantedAuthority("ROLE_USER"))));
+
+        doFilter(new InternalTokenFilter(TOKEN), "wrong-token");
+
+        assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
     }
 
     private void doFilter(InternalTokenFilter filter, String header) throws Exception {

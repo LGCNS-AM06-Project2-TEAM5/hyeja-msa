@@ -52,6 +52,9 @@ public class InternalTokenFilter extends OncePerRequestFilter {
                     List.of(new SimpleGrantedAuthority("ROLE_INTERNAL"))
             );
             SecurityContextHolder.getContext().setAuthentication(authentication);
+        } else {
+            // 사용자 JWT만 있는 요청도 403이 아니라 401(COMMON_002)이 되도록 앞선 인증을 지웁니다.
+            SecurityContextHolder.clearContext();
         }
         filterChain.doFilter(request, response);
     }

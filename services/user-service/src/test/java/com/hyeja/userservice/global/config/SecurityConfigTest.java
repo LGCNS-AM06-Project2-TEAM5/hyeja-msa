@@ -5,11 +5,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.hyeja.userservice.domain.member.entity.Member;
+import com.hyeja.userservice.global.security.JwtProvider;
+import com.hyeja.userservice.global.security.TokenBlacklist;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
 
 @SpringBootTest
@@ -21,6 +26,13 @@ class SecurityConfigTest {
 
     @Autowired
     private MockMvc mvc;
+
+    @Autowired
+    private JwtProvider jwtProvider;
+
+    // 테스트에는 Redis가 없으므로 로그아웃 블랙리스트 조회만 대신합니다(기본값 false).
+    @MockitoBean
+    private TokenBlacklist tokenBlacklist;
 
     @Test
     void healthCheckIsPublic() throws Exception {
@@ -47,6 +59,21 @@ class SecurityConfigTest {
     @Test
     void internalProfileRejectsWrongToken() throws Exception {
         mvc.perform(get("/internal/members/999/profile").header("X-Internal-Token", "wrong-token"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("COMMON_002"));
+    }
+
+    @Test
+    void internalProfileRejectsUserJwtWithoutInternalToken() throws Exception {
+        Member member = Member.builder()
+                .email("hyeja@example.com")
+                .password("encoded-password")
+                .nickname("민지")
+                .build();
+        ReflectionTestUtils.setField(member, "memberId", 1L);
+
+        mvc.perform(get("/internal/members/1/profile")
+                        .header("Authorization", "Bearer " + jwtProvider.createAccessToken(member)))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("COMMON_002"));
     }
