@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -29,7 +30,24 @@ public class MemberWithdrawnListener {
             throw new IllegalArgumentException("Kafka key와 aggregateId가 일치하지 않습니다.");
         }
 
-        var result = cleanupService.cleanup(event.memberId());
+        MemberEngagementCleanupService.CleanupResult result;
+        try {
+            result = cleanupService.process(event);
+        } catch (DataIntegrityViolationException exception) {
+            if (cleanupService.isProcessed(event.eventId())) {
+                log.info("[Idempotent Skip] 이미 처리된 회원 탈퇴 이벤트입니다. eventId={}, memberId={}",
+                        event.eventId(), event.memberId());
+                return;
+            }
+            throw exception;
+        }
+
+        if (!result.processed()) {
+            log.info("[Idempotent Skip] 이미 처리된 회원 탈퇴 이벤트입니다. eventId={}, memberId={}",
+                    event.eventId(), event.memberId());
+            return;
+        }
+
         log.info("회원 탈퇴 데이터 정리 완료. eventId={}, memberId={}, favorites={}, notifications={}",
                 event.eventId(), event.memberId(), result.deletedFavorites(), result.deletedNotifications());
     }
