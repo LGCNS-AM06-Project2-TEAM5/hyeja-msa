@@ -355,7 +355,7 @@ services:
       SPRING_MAIL_PORT: ${MAIL_PORT:-587}
       SPRING_MAIL_USERNAME: ${MAIL_USERNAME:-}
       SPRING_MAIL_PASSWORD: ${MAIL_PASSWORD:-}
-      ADMIN_ALERT_EMAIL: ${ADMIN_ALERT_EMAIL:-admin-alerts@hyeja.com}
+      ADMIN_ALERT_EMAIL: ${ADMIN_ALERT_EMAIL:-}
       ADMIN_DLT_THRESHOLD: ${ADMIN_DLT_THRESHOLD:-3}
       ADMIN_DLT_RETRY_INTERVAL_MS: ${ADMIN_DLT_RETRY_INTERVAL_MS:-60000}
       # Compose readiness must not depend on the external SMTP server.

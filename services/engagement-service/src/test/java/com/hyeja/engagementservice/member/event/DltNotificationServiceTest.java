@@ -74,9 +74,28 @@ class DltNotificationServiceTest {
         assertThat(storedState.get().getFailureCount()).isZero();
     }
 
+    @Test
+    void 관리자_이메일이_비어_있으면_SMTP_호출을_건너뛰고_대기_상태를_유지한다() {
+        service = service(mailSender, "  ");
+        service.recordFailure("member-withdrawn-dlt", "1", "first");
+        service.recordFailure("member-withdrawn-dlt", "2", "second");
+        service.recordFailure("member-withdrawn-dlt", "3", "third");
+
+        when(repository.findAllByNotificationPendingTrue()).thenReturn(List.of(storedState.get()));
+        service.retryPendingAlerts();
+
+        verify(mailSender, never()).send(any(SimpleMailMessage.class));
+        assertThat(storedState.get().isNotificationPending()).isTrue();
+        assertThat(storedState.get().getFailureCount()).isEqualTo(3);
+    }
+
     private DltNotificationService service(JavaMailSender sender) {
+        return service(sender, "operator@example.com");
+    }
+
+    private DltNotificationService service(JavaMailSender sender, String adminEmail) {
         DltNotificationService notificationService = new DltNotificationService(sender, repository);
-        ReflectionTestUtils.setField(notificationService, "adminEmail", "operator@example.com");
+        ReflectionTestUtils.setField(notificationService, "adminEmail", adminEmail);
         ReflectionTestUtils.setField(notificationService, "dltThreshold", 3);
         return notificationService;
     }
