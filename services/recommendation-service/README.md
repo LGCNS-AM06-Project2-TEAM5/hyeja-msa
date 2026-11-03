@@ -14,7 +14,7 @@
 
 회원 ID는 Gateway가 JWT를 검증한 뒤 넣는 `X-Member-Id` 헤더로 받습니다(없으면 401 `COMMON_002`).
 
-**현재 상태:** 검색 코어·AI 분석은 옮겼지만 F1·F2·F3 Feign Client 구현 전이라 `recommendation.search.enabled=false`(기본값)로 검색 API를 등록하지 않습니다. 켜려면 `ProfileClient`·`PolicyClient`·`FavoriteClient` 구현 빈과 `OPEN_AI_KEY`·`OPEN_AI_MODEL`이 필요합니다.
+**현재 상태:** 검색 코어·AI 분석은 옮겼고, F1(user 회원 조건, `GET /internal/members/{memberId}/profile`)은 `UserProfileFeignClient`·`ProfileClientAdapter`·`UserServiceErrorDecoder`(404 `MEMBER_001`·`PROFILE_001` 그대로 전달), F2(policy 정책 후보, `POST /internal/policies/candidates`)는 `PolicyCandidateFeignClient`·`PolicyClientAdapter`, F3(engagement 관심 여부, `POST /internal/favorites/active-policy-ids`)는 `FavoriteFeignClient`·`FavoriteClientAdapter`로 구현했습니다. 서비스 간 인증 계약이 반영되기 전이라 `recommendation.search.enabled=false`(기본값)로 검색 API를 등록하지 않습니다. 켜려면 `OPEN_AI_KEY`·`OPEN_AI_MODEL`이 필요합니다. engagement는 인증 없는 요청을 401로 막으므로, 인증 헤더 반영 전에는 F3가 실패해 관심 표시 없이(`isFavorite=false`) 응답합니다.
 
 ## 옮겨 올 코드 (hyeja-backend)
 

@@ -21,7 +21,10 @@ public enum ErrorStatus implements BaseErrorCode {
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "SERVER_001", "서버 오류가 발생했습니다."),
 
     // recommendation-service가 쓰는 코드만 1차(hyeja-backend)에서 가져왔습니다.
-    // 회원·조건 코드(MEMBER_001, PROFILE_001)는 user-service 응답을 그대로 전달하는 Feign 연동 단계에서 추가합니다.
+    // 회원·조건 (F1 user-service 오류를 같은 코드·상태로 전달합니다. UserServiceErrorDecoder)
+    MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "MEMBER_001", "존재하지 않는 회원입니다."),
+    PROFILE_NOT_FOUND(HttpStatus.NOT_FOUND, "PROFILE_001", "등록된 조건이 없습니다."),
+
     // 정책 검색
     POLICY_SEARCH_NOT_HOUSING(HttpStatus.BAD_REQUEST, "POLICY_SEARCH_002", "혜자는 주거 관련 혜택을 알려드려요."),
     POLICY_SEARCH_QUERY_REQUIRED(HttpStatus.BAD_REQUEST, "POLICY_SEARCH_006", "검색어를 입력해 주세요."),
