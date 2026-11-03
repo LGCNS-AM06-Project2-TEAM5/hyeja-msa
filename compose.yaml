@@ -32,10 +32,6 @@ x-config-client-environment: &config-client-environment
   SPRING_CLOUD_CONFIG_TLS_TRUST_STORE_TYPE: PKCS12
   SPRING_CLOUD_CONFIG_TLS_TRUST_STORE_PASSWORD: ${CONFIG_TLS_TRUST_STORE_PASSWORD:?Set CONFIG_TLS_TRUST_STORE_PASSWORD}
 
-x-config-client-volumes: &config-client-volumes
-  - ./docker/config-tls/trust:/run/config-trust:ro
-  - app-logs:/app/logs
-
 x-business-environment: &business-environment
   <<: *config-client-environment
   JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env (at least 32 UTF-8 bytes)}
@@ -254,7 +250,9 @@ services:
       SERVER_PORT: "8000"
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env (at least 32 UTF-8 bytes)}
       GATEWAY_ENGAGEMENT_SECRET: ${GATEWAY_ENGAGEMENT_SECRET:?Set a separate internal JWT key (at least 32 UTF-8 bytes)}
-    volumes: *config-client-volumes
+    volumes:
+      - ./docker/config-tls/trust:/run/config-trust:ro
+      - gateway-logs:/app/logs
     ports:
       - "127.0.0.1:${GATEWAY_HOST_PORT:-8000}:8000"
     depends_on:
@@ -299,7 +297,9 @@ services:
       MANAGEMENT_HEALTH_MAIL_ENABLED: "false"
       MAIL_USERNAME: ${MAIL_USERNAME:-}
       MAIL_PASSWORD: ${MAIL_PASSWORD:-}
-    volumes: *config-client-volumes
+    volumes:
+      - ./docker/config-tls/trust:/run/config-trust:ro
+      - user-logs:/app/logs
     depends_on: *business-dependencies
 
   policy-service:
@@ -325,7 +325,9 @@ services:
       OPEN_AI_KEY: ${OPEN_AI_KEY:-}
       OPEN_AI_MODEL: ${OPEN_AI_MODEL:-gpt-4o-mini}
       YOUTH_API_KEY: ${YOUTH_API_KEY:-}
-    volumes: *config-client-volumes
+    volumes:
+      - ./docker/config-tls/trust:/run/config-trust:ro
+      - policy-logs:/app/logs
     depends_on: *business-dependencies
 
   engagement-service:
@@ -351,7 +353,9 @@ services:
       SPRING_DATASOURCE_PASSWORD: ${ENGAGEMENT_DB_PASSWORD:?Set ENGAGEMENT_DB_PASSWORD in .env}
       MAIL_USERNAME: ${MAIL_USERNAME:-}
       MAIL_PASSWORD: ${MAIL_PASSWORD:-}
-    volumes: *config-client-volumes
+    volumes:
+      - ./docker/config-tls/trust:/run/config-trust:ro
+      - engagement-logs:/app/logs
     depends_on: *business-dependencies
 
   recommendation-service:
@@ -367,7 +371,9 @@ services:
       SERVER_PORT: "8084"
       OPEN_AI_KEY: ${OPEN_AI_KEY:-}
       OPEN_AI_MODEL: ${OPEN_AI_MODEL:-gpt-4o-mini}
-    volumes: *config-client-volumes
+    volumes:
+      - ./docker/config-tls/trust:/run/config-trust:ro
+      - recommendation-logs:/app/logs
     depends_on: *business-dependencies
 
 secrets:
@@ -377,6 +383,10 @@ secrets:
 volumes:
   mariadb-data:
   redis-data:
-  app-logs:
+  gateway-logs:
+  user-logs:
+  policy-logs:
+  engagement-logs:
+  recommendation-logs:
   prometheus-data:
   kafka-data:
