@@ -5,8 +5,10 @@ import com.hyeja.userservice.domain.member.dto.MemberAccountResponseDTO;
 import com.hyeja.userservice.domain.member.dto.MemberFindEmailResponseDTO;
 import com.hyeja.userservice.domain.member.dto.MemberLoginRequestDTO;
 import com.hyeja.userservice.domain.member.dto.MemberLoginResponseDTO;
+import com.hyeja.userservice.domain.member.dto.MemberSignupRequestDTO;
 import com.hyeja.userservice.domain.member.entity.Member;
 import com.hyeja.userservice.domain.member.repository.MemberRepository;
+import com.hyeja.userservice.domain.profile.service.ProfileService;
 import com.hyeja.userservice.domain.profile.repository.ProfileRepository;
 import com.hyeja.userservice.global.apiPayload.status.ErrorStatus;
 import com.hyeja.userservice.global.exception.GeneralException;
@@ -27,9 +29,31 @@ public class MemberService {
 
     private final MemberRepository memberRepository;
     private final ProfileRepository profileRepository;
+    private final ProfileService profileService;
     private final PasswordEncoder passwordEncoder;
     private final JwtProvider jwtProvider;
     private final TokenBlacklist tokenBlacklist;
+    private final EmailVerificationService emailVerificationService;
+
+    @Transactional
+    public MemberAccountResponseDTO signup(MemberSignupRequestDTO request) {
+        if (memberRepository.existsByEmail(request.getEmail())) {
+            throw new GeneralException(ErrorStatus.MEMBER_EMAIL_DUPLICATED);
+        }
+        emailVerificationService.checkVerified(request.getEmail());
+        if (memberRepository.existsByNickname(request.getNickname())) {
+            throw new GeneralException(ErrorStatus.MEMBER_NICKNAME_DUPLICATED);
+        }
+
+        Member member = memberRepository.save(MemberConverter.toMember(
+                request,
+                passwordEncoder.encode(request.getPassword())
+        ));
+        profileService.create(member, request.getProfile());
+        emailVerificationService.clearVerified(request.getEmail());
+
+        return MemberConverter.toMemberAccountResponseDTO(member);
+    }
 
     public MemberLoginResponseDTO login(MemberLoginRequestDTO request) {
         Member member = memberRepository.findByEmail(request.getEmail())

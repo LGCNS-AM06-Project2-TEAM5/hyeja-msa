@@ -23,12 +23,12 @@ Gateway 라우팅과 인증 규칙은 [infra/gateway-service](../../infra/gatewa
 
 | # | 호출 → 제공 | 용도 | 지금 코드 위치 | 장애 시 | 상태 |
 |---|---|---|---|---|---|
-| F1 | recommendation → user | 회원의 내 조건 조회 | `PolicySearchService` → `ProfileService.getActiveProfile` | 검색 실패 응답 | 설계서 |
+| F1 | recommendation → user | 회원의 내 조건 조회 | `PolicySearchService` → `ProfileService.getActiveProfile` | 검색 실패 응답 | 확정 (user) |
 | F2 | recommendation → policy | 정책 후보 일괄 조회 (판정에 필요한 조건과 신청 지역 포함) | `PolicyRepository.searchActivePolicies`, `PolicyRegionRepository` | 검색 실패 응답 | 설계서 |
 | F3 | recommendation → engagement | 관심 여부 일괄 조회 | `FavoriteRepository.findActivePolicyIds` | 하트 없이 응답 | 설계서 |
 | F4 | policy → engagement | 관심 여부 일괄 조회 (목록·상세·카드뉴스) | `PolicyService`, `CardNewsService` | 하트 없이 응답 | 설계서 |
 | F5 | engagement → policy | 관심 등록 시 정책 존재·스냅샷 확인 | `FavoriteService` → `PolicyRepository` | 등록 실패 안내 | 설계서 |
-| F6 | policy → user | 회원의 내 조건 조회 (`/housing/me` 필터, 상세 판정, 회원 카드뉴스) | `PolicyService` 200·249행, `CardNewsService` 60행 → `ProfileService` | 비로그인 응답과 같게 | **코드 대조로 추가** |
+| F6 | policy → user | 회원의 내 조건 조회 (`/housing/me` 필터, 상세 판정, 회원 카드뉴스) | `PolicyService` 200·249행, `CardNewsService` 60행 → `ProfileService` | 비로그인 응답과 같게 | 확정 (user) |
 
 두지 않는 호출 (#1 확정): 아래 두 경우는 Feign 계약을 만들지 않습니다.
 
@@ -36,6 +36,47 @@ Gateway 라우팅과 인증 규칙은 [infra/gateway-service](../../infra/gatewa
 - F8 (policy → recommendation, 정책 상세 자격 판정): 판정 코드(`PolicyEligibilityEvaluator` 등)를 policy와 recommendation이 같이 씁니다. 판정 규칙의 기준은 recommendation이 갖습니다.
 
 규칙: 한 요청 안에서 A→B→A로 되돌아오는 호출은 만들지 않습니다. 여러 건은 반드시 일괄 조회로 한 번에 가져옵니다.
+
+### F1·F6 회원 조건 조회 (user 제공)
+
+`GET /internal/members/{memberId}/profile`
+
+200 OK: `ApiResponse<MemberProfileDTO>`
+
+```json
+{
+  "isSuccess": true,
+  "code": "SUCCESS_001",
+  "message": "성공입니다.",
+  "result": {
+    "memberId": 1,
+    "birth": "2000-03-15",
+    "region": { "regionCode": "11440", "sigunguName": "서울특별시 마포구" },
+    "employmentCode": "EMPLOYED",
+    "houselessYn": true,
+    "marriageCode": "SINGLE",
+    "incomeRangeCode": "R2000_3000",
+    "educationCode": null,
+    "housingType": "MONTHLY_RENT"
+  }
+}
+```
+
+- `marriageCode`, `incomeRangeCode`, `educationCode`, `housingType`은 선택 항목이라 `null`일 수 있습니다.
+- 필드명과 enum 값은 1차 코드(hyeja-backend)의 Profile과 같습니다.
+- 나이는 계산하지 않고 `birth`만 반환합니다. 판정 기준 날짜는 호출하는 쪽이 정합니다.
+- `sigunguName`은 user_db의 지역 읽기 복사본에서 채웁니다. 복사본에 해당 코드가 없으면(행정구역 변경 등) `null`이며, 이때도 `regionCode`는 채워집니다.
+
+오류 (ApiResponse 실패 형식, 1차 `ProfileService.getActiveProfile`과 같은 기준)
+
+| 상태 | 코드 | 경우 |
+|---|---|---|
+| 404 | `MEMBER_001` | 회원이 없거나 탈퇴함 |
+| 404 | `PROFILE_001` | 조건 미등록 또는 삭제됨 (프론트는 온보딩으로 이동) |
+| 400 | `COMMON_001` | `memberId` 형식 오류 |
+| 500 | `SERVER_001` | 내부 처리 오류 |
+
+인증: user-service `SecurityConfig`에서 `/internal/**`을 JWT 없이 허용합니다. Gateway가 라우팅하지 않아 외부에는 노출되지 않습니다. 서비스 간 인증 수단은 인프라 담당자와 정한 뒤 추가합니다.
 
 ## 3. Kafka 이벤트
 

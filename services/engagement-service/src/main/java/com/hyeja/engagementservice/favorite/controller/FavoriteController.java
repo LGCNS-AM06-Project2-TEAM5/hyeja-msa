@@ -15,7 +15,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -50,13 +50,13 @@ public class FavoriteController {
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "401",
-                    description = "회원 식별 헤더 누락 또는 오류 (COMMON_002)",
+                    description = "내부 인증 토큰 누락 또는 오류 (COMMON_002)",
                     content = @Content(schema = @Schema(implementation = ApiResponse.class))
             )
     })
     @GetMapping("")
     public ApiResponse<FavoriteListDTO> getMyFavorites(
-            @RequestHeader("X-Member-Id") Long memberId,
+            @AuthenticationPrincipal Long memberId,
             @Parameter(
                     name = "keyword",
                     description = "정책명 또는 지원 내용 검색어. 생략하거나 공백이면 전체 목록을 조회합니다.",
@@ -116,7 +116,7 @@ public class FavoriteController {
                     required = true
             )
             @PathVariable(name = "policyId") String policyId,
-            @RequestHeader("X-Member-Id") Long memberId
+            @AuthenticationPrincipal Long memberId
     ) {
         FavoriteItemDTO result = favoriteService.createFavorite(memberId, policyId);
         return ApiResponse.onSuccess(result);
@@ -154,7 +154,7 @@ public class FavoriteController {
             )
             @PathVariable(name = "policyId")
             @NotBlank(message = "정책 ID는 필수입니다.") String policyId,
-            @RequestHeader("X-Member-Id") Long memberId
+            @AuthenticationPrincipal Long memberId
     ) {
         favoriteService.deleteFavorite(memberId, policyId);
         return ApiResponse.onSuccess(null);

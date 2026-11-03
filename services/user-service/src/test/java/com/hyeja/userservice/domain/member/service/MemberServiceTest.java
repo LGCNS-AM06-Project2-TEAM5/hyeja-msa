@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -12,11 +13,14 @@ import com.hyeja.userservice.domain.member.dto.MemberAccountResponseDTO;
 import com.hyeja.userservice.domain.member.dto.MemberFindEmailResponseDTO;
 import com.hyeja.userservice.domain.member.dto.MemberLoginRequestDTO;
 import com.hyeja.userservice.domain.member.dto.MemberLoginResponseDTO;
+import com.hyeja.userservice.domain.member.dto.MemberSignupRequestDTO;
 import com.hyeja.userservice.domain.member.entity.Member;
 import com.hyeja.userservice.domain.member.repository.MemberRepository;
+import com.hyeja.userservice.domain.profile.dto.ProfileRequestDTO;
 import com.hyeja.userservice.domain.profile.entity.Profile;
 import com.hyeja.userservice.domain.profile.enums.EmploymentStatus;
 import com.hyeja.userservice.domain.profile.repository.ProfileRepository;
+import com.hyeja.userservice.domain.profile.service.ProfileService;
 import com.hyeja.userservice.global.apiPayload.status.ErrorStatus;
 import com.hyeja.userservice.global.exception.GeneralException;
 import com.hyeja.userservice.global.security.JwtProvider;
@@ -44,13 +48,85 @@ class MemberServiceTest {
     @Mock
     private ProfileRepository profileRepository;
     @Mock
+    private ProfileService profileService;
+    @Mock
     private PasswordEncoder passwordEncoder;
     @Mock
     private JwtProvider jwtProvider;
     @Mock
     private TokenBlacklist tokenBlacklist;
+    @Mock
+    private EmailVerificationService emailVerificationService;
     @InjectMocks
     private MemberService memberService;
+
+    @Test
+    void signupSavesEncodedMemberAndProfileAfterEmailVerification() {
+        LocalDateTime createdAt = LocalDateTime.of(2026, 11, 3, 10, 0);
+        MemberSignupRequestDTO request = signupRequest("11440");
+        when(memberRepository.existsByEmail("hyeja@example.com")).thenReturn(false);
+        when(memberRepository.existsByNickname("민지")).thenReturn(false);
+        when(passwordEncoder.encode("hyeja1234!")).thenReturn("encoded-password");
+        when(memberRepository.save(any(Member.class))).thenAnswer(invocation -> {
+            Member saved = invocation.getArgument(0);
+            ReflectionTestUtils.setField(saved, "memberId", 1L);
+            ReflectionTestUtils.setField(saved, "createdAt", createdAt);
+            return saved;
+        });
+
+        MemberAccountResponseDTO result = memberService.signup(request);
+
+        ArgumentCaptor<Member> memberCaptor = ArgumentCaptor.forClass(Member.class);
+        verify(memberRepository).save(memberCaptor.capture());
+        Member savedMember = memberCaptor.getValue();
+        assertThat(savedMember.getPassword()).isEqualTo("encoded-password");
+        assertThat(result.getMemberId()).isEqualTo(1L);
+        assertThat(result.getCreatedAt()).isEqualTo(createdAt);
+        verify(emailVerificationService).checkVerified("hyeja@example.com");
+        verify(profileService).create(savedMember, request.getProfile());
+        verify(emailVerificationService).clearVerified("hyeja@example.com");
+    }
+
+    @Test
+    void signupRejectsDuplicatedEmailBeforeVerification() {
+        when(memberRepository.existsByEmail("hyeja@example.com")).thenReturn(true);
+
+        assertSignupFails(signupRequest("11440"), ErrorStatus.MEMBER_EMAIL_DUPLICATED);
+
+        verify(emailVerificationService, never()).checkVerified(any());
+    }
+
+    @Test
+    void signupRejectsUnverifiedEmail() {
+        when(memberRepository.existsByEmail("hyeja@example.com")).thenReturn(false);
+        doThrow(new GeneralException(ErrorStatus.VERIFY_REQUIRED))
+                .when(emailVerificationService).checkVerified("hyeja@example.com");
+
+        assertSignupFails(signupRequest("11440"), ErrorStatus.VERIFY_REQUIRED);
+    }
+
+    @Test
+    void signupRejectsDuplicatedNickname() {
+        when(memberRepository.existsByEmail("hyeja@example.com")).thenReturn(false);
+        when(memberRepository.existsByNickname("민지")).thenReturn(true);
+
+        assertSignupFails(signupRequest("11440"), ErrorStatus.MEMBER_NICKNAME_DUPLICATED);
+    }
+
+    @Test
+    void signupDoesNotClearVerificationWhenProfileCreationFails() {
+        MemberSignupRequestDTO request = signupRequest("99999");
+        when(memberRepository.existsByEmail("hyeja@example.com")).thenReturn(false);
+        when(memberRepository.existsByNickname("민지")).thenReturn(false);
+        when(passwordEncoder.encode("hyeja1234!")).thenReturn("encoded-password");
+        when(memberRepository.save(any(Member.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        doThrow(new GeneralException(ErrorStatus.REGION_NOT_FOUND))
+                .when(profileService).create(any(Member.class), any(ProfileRequestDTO.class));
+
+        assertSignupFails(request, ErrorStatus.REGION_NOT_FOUND);
+
+        verify(emailVerificationService, never()).clearVerified(any());
+    }
 
     @Test
     void loginReturnsAccessTokenWhenCredentialsMatch() {
@@ -147,6 +223,28 @@ class MemberServiceTest {
 
         profile.softDelete();
         assertFindEmailFails("민지", LocalDate.of(2000, 3, 15));
+    }
+
+    private void assertSignupFails(MemberSignupRequestDTO request, ErrorStatus expected) {
+        assertThatThrownBy(() -> memberService.signup(request))
+                .isInstanceOf(GeneralException.class)
+                .extracting("code")
+                .isEqualTo(expected);
+        verify(emailVerificationService, never()).clearVerified(any());
+    }
+
+    private MemberSignupRequestDTO signupRequest(String regionCode) {
+        return MemberSignupRequestDTO.builder()
+                .email("hyeja@example.com")
+                .password("hyeja1234!")
+                .nickname("민지")
+                .profile(ProfileRequestDTO.builder()
+                        .birth(LocalDate.of(2000, 3, 15))
+                        .regionCode(regionCode)
+                        .employmentCode(EmploymentStatus.EMPLOYED)
+                        .houselessYn(true)
+                        .build())
+                .build();
     }
 
     private void assertLoginFails(MemberLoginRequestDTO request) {

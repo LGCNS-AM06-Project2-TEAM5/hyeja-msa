@@ -79,6 +79,15 @@ class MemberProfileReaderTest {
         assertError(ErrorStatus.USER_SERVICE_UNAVAILABLE);
     }
 
+    @Test
+    void 실패_응답에_값이_들어_있어도_조건으로_쓰지_않는다() {
+        MemberProfileDTO profile = new MemberProfileDTO(7L, null, null, null, null, null);
+        given(userClient.getMemberProfile(7L))
+                .willReturn(new UserApiResponse<>(false, "SERVER_001", "서버 오류가 발생했습니다.", profile));
+
+        assertError(ErrorStatus.USER_SERVICE_UNAVAILABLE);
+    }
+
     private void assertError(ErrorStatus expected) {
         assertThatThrownBy(() -> reader.getActiveProfile(7L))
                 .isInstanceOf(GeneralException.class)
