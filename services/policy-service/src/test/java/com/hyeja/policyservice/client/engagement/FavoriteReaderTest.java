@@ -13,6 +13,7 @@ import com.hyeja.policyservice.client.engagement.dto.EngagementApiResponse;
 import feign.FeignException;
 import feign.Request;
 import feign.RetryableException;
+import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
@@ -23,7 +24,7 @@ import org.mockito.ArgumentCaptor;
 class FavoriteReaderTest {
 
     private final EngagementClient client = mock(EngagementClient.class);
-    private final FavoriteReader reader = new FavoriteReader(client);
+    private final FavoriteReader reader = new FavoriteReader(client, CircuitBreakerRegistry.ofDefaults());
 
     @Test
     void 관심_등록한_정책_ID만_돌려준다() {

@@ -14,6 +14,7 @@ import feign.FeignException;
 import feign.Request;
 import feign.Response;
 import feign.RetryableException;
+import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.Map;
@@ -22,7 +23,7 @@ import org.junit.jupiter.api.Test;
 class MemberProfileReaderTest {
 
     private final UserClient userClient = mock(UserClient.class);
-    private final MemberProfileReader reader = new MemberProfileReader(userClient);
+    private final MemberProfileReader reader = new MemberProfileReader(userClient, CircuitBreakerRegistry.ofDefaults());
 
     @Test
     void 회원_조건을_그대로_돌려준다() {
