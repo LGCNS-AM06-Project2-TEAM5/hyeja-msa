@@ -1,0 +1,16 @@
+# Opt-in refresh probes, published only on the local machine.
+# docker compose -f compose.yaml -f compose.bus-test.yaml up --build -d
+services:
+  policy-service:
+    environment:
+      SPRING_PROFILES_ACTIVE: docker,bus-test
+      MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,info,refreshstatus
+    ports:
+      - "127.0.0.1:18082:8082"
+
+  recommendation-service:
+    environment:
+      SPRING_PROFILES_ACTIVE: docker,bus-test
+      MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,info,refreshstatus
+    ports:
+      - "127.0.0.1:18084:8084"
