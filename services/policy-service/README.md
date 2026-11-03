@@ -47,7 +47,7 @@
 | 지점 | 쓰는 쪽 | 지금 동작 | 채우는 시점 |
 |---|---|---|---|
 | `PolicyMemberService.getMemberDetail(policy, memberId)` → `PolicyMemberDetailDTO` | 정책 상세 | F6 회원 조건으로 1차 판정 5가지(`PolicyEligibilityEvaluator`)를 채움. user가 응답하지 않으면 비로그인과 같은 값. 하트는 아직 false | engagement(F4) 연결 시 하트 |
-| `PolicyChangedPublisher.publish(policyIds)` | 정책 수집 저장 후 | 부른 트랜잭션 안에서 `policy_outbox`에 이벤트를 적어 둠(`OutboxPolicyChangedPublisher`). 저장이 롤백되면 이벤트도 남지 않음. Kafka 전송은 아직 없음 | Kafka 전송(#9) |
+| `PolicyChangedPublisher.publish(policyIds)` | 정책 수집 저장 후 | 부른 트랜잭션 안에서 `policy_outbox`에 이벤트를 적어 둠(`OutboxPolicyChangedPublisher`). 저장이 롤백되면 이벤트도 남지 않음. 커밋된 행은 `PolicyOutboxRelay`가 1초마다 `policy-updated` 토픽으로 보냄(key = policyId, Kafka 주소가 있는 Compose에서만) | 수집 코드에서 호출(예준님) |
 
 상세 응답의 `isFavorite`·`overallStatus`·`conditions`는 `PolicyMemberDetailDTO` 값을 그대로 옮겨 담으면 됩니다.
 
