@@ -21,7 +21,7 @@ import org.springframework.test.web.client.MockRestServiceServer;
 class PolicySyncHttpTest {
     @Test
     void requestsOriginalParametersAndDeserializesYouthResponse() {
-        var template = new RestTemplateConfig().restTemplate();
+        var template = new RestTemplateConfig().restTemplate(new org.springframework.boot.restclient.RestTemplateBuilder());
         var server = MockRestServiceServer.bindTo(template).build();
         var analyzer = mock(PolicyAiAnalyzer.class);
         var saver = mock(PolicySyncItemService.class);

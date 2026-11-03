@@ -1,7 +1,7 @@
 name: hyeja
 
 x-app-environment: &app-environment
-  SPRING_PROFILES_ACTIVE: docker
+  SPRING_PROFILES_ACTIVE: ${APP_PROFILES:-docker}
   SPRING_CONFIG_IMPORT: configserver:https://config-service:8888
   CONFIG_SERVER_URL: https://config-service:8888
   EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-service:8761/eureka/
@@ -23,6 +23,9 @@ x-app-environment: &app-environment
 
 x-config-client-environment: &config-client-environment
   <<: *app-environment
+  MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,info,prometheus
+  MONITORING_USERNAME: monitoring
+  MONITORING_PASSWORD: ${MONITORING_PASSWORD:?Set a separate MONITORING_PASSWORD (16+ characters)}
   SPRING_CLOUD_CONFIG_URI: https://config-service:8888
   SPRING_CLOUD_CONFIG_TLS_ENABLED: "true"
   SPRING_CLOUD_CONFIG_TLS_TRUST_STORE: file:/run/config-trust/truststore.p12
@@ -31,6 +34,7 @@ x-config-client-environment: &config-client-environment
 
 x-config-client-volumes: &config-client-volumes
   - ./docker/config-tls/trust:/run/config-trust:ro
+  - app-logs:/app/logs
 
 x-business-environment: &business-environment
   <<: *config-client-environment
@@ -143,6 +147,33 @@ services:
     ports:
       - "127.0.0.1:${ZIPKIN_HOST_PORT:-9411}:9411"
 
+  prometheus:
+    image: prom/prometheus:v3.13.3
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=7d
+    ports:
+      - "127.0.0.1:${PROMETHEUS_HOST_PORT:-9090}:9090"
+    volumes:
+      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./docker/prometheus/recording-rules.yml:/etc/prometheus/recording-rules.yml:ro
+      - prometheus-data:/prometheus
+    secrets:
+      - monitoring_password
+    depends_on:
+      gateway-service:
+        condition: service_healthy
+      user-service:
+        condition: service_healthy
+      policy-service:
+        condition: service_healthy
+      engagement-service:
+        condition: service_healthy
+      recommendation-service:
+        condition: service_healthy
+
   discovery-service:
     <<: *app
     build:
@@ -186,6 +217,7 @@ services:
       CONFIG_RECOMMENDATION_PASSWORD: ${CONFIG_RECOMMENDATION_PASSWORD:?Set CONFIG_RECOMMENDATION_PASSWORD}
       CONFIG_ADMIN_USERNAME: ${CONFIG_ADMIN_USERNAME:-config-admin}
       CONFIG_ADMIN_PASSWORD: ${CONFIG_ADMIN_PASSWORD:?Set a separate CONFIG_ADMIN_PASSWORD (16+ characters)}
+      CONFIG_ALLOWED_PROFILES: ${CONFIG_ALLOWED_PROFILES:-default,local,dev,docker,debug}
       MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,info,busrefresh
       EUREKA_INSTANCE_PREFER_IP_ADDRESS: "false"
       EUREKA_INSTANCE_HOSTNAME: config-service
@@ -338,7 +370,13 @@ services:
     volumes: *config-client-volumes
     depends_on: *business-dependencies
 
+secrets:
+  monitoring_password:
+    environment: MONITORING_PASSWORD
+
 volumes:
   mariadb-data:
   redis-data:
+  app-logs:
+  prometheus-data:
   kafka-data:

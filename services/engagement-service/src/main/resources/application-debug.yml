@@ -1,0 +1,11 @@
+# Explicit opt-in: run with docker,debug or dev,debug.
+management:
+  tracing:
+    sampling:
+      probability: 1.0
+
+logging:
+  level:
+    org.springframework.security: DEBUG
+    com.hyeja.engagementservice.observability: DEBUG
+  # Detailed Feign logging is sanitized by SafeFeignLogger.

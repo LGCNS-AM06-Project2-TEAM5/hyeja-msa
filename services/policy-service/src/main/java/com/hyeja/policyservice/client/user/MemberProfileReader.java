@@ -29,16 +29,17 @@ public class MemberProfileReader {
         try {
             response = userClient.getMemberProfile(memberId);
         } catch (FeignException e) {
-            throw translate(e, memberId);
+            throw translate(e);
         }
         if (response == null || !Boolean.TRUE.equals(response.isSuccess()) || response.result() == null) {
-            log.warn("user-service 회원 조건 응답이 비어 있습니다. memberId={}", memberId);
+            log.warn("user-service 회원 조건 응답이 비어 있습니다.");
             throw new GeneralException(ErrorStatus.USER_SERVICE_UNAVAILABLE);
         }
         return response.result();
     }
 
-    private GeneralException translate(FeignException e, Long memberId) {
+    /** Maps known downstream errors without logging Feign messages that may contain response bodies. */
+    private GeneralException translate(FeignException e) {
         if (e.status() == 404) {
             String code = errorCode(e.contentUTF8());
             if (ErrorStatus.MEMBER_NOT_FOUND.getCode().equals(code)) {
@@ -48,8 +49,8 @@ public class MemberProfileReader {
                 return new GeneralException(ErrorStatus.PROFILE_NOT_FOUND);
             }
         }
-        log.warn("user-service 회원 조건 조회 실패. memberId={}, status={}, message={}",
-                memberId, e.status(), e.getMessage());
+        log.warn("user-service 회원 조건 조회 실패. status={}, errorType={}",
+                e.status(), e.getClass().getSimpleName());
         return new GeneralException(ErrorStatus.USER_SERVICE_UNAVAILABLE);
     }
 

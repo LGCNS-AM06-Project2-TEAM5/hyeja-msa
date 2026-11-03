@@ -23,6 +23,7 @@ ext {
 }
 
 dependencies {
+    runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
     implementation 'org.springframework.cloud:spring-cloud-starter-bus-kafka'
     // policy-updated 구독(policy_snapshot 갱신)
     implementation 'org.springframework.boot:spring-boot-starter-kafka'
