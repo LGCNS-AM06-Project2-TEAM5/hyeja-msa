@@ -31,7 +31,13 @@ import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 @ContextConfiguration(classes = ConfigSecurityConfigurationTest.TestConfiguration.class)
 @TestPropertySource(properties = {
         "config-security.admin-username=config-admin",
-        "config-security.admin-password=test-bus-admin-password"
+        "config-security.admin-password=test-bus-admin-password",
+        "encrypt.key=test-bus-encryption-key-at-least-32-bytes",
+        "server.ssl.enabled=true",
+        "config-security.allowed-profiles=dev",
+        "config-security.allowed-labels=main",
+        "config-security.readers.policy-service.username=config-policy",
+        "config-security.readers.policy-service.password=test-policy-reader-password"
 })
 class ConfigSecurityConfigurationTest {
     @Configuration(proxyBeanMethods = false)
@@ -73,8 +79,10 @@ class ConfigSecurityConfigurationTest {
     }
 
     @Test
-    void configReadsAndHealthStayPublicButOtherActuatorEndpointsAreDenied() throws Exception {
-        mvc.perform(get("/policy-service/dev")).andExpect(status().isOk());
+    void configReadsRequireScopedCredentialsWhileHealthStaysPublic() throws Exception {
+        mvc.perform(get("/policy-service/dev")).andExpect(status().isUnauthorized());
+        mvc.perform(get("/policy-service/dev").with(httpBasic("config-policy", "test-policy-reader-password")))
+                .andExpect(status().isOk());
         mvc.perform(get("/actuator/health")).andExpect(status().isOk());
         mvc.perform(get("/actuator/env").with(httpBasic("config-admin", "test-bus-admin-password")))
                 .andExpect(status().isForbidden());

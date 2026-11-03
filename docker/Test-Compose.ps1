@@ -78,8 +78,14 @@ try {
     $token = "$header.$payload.$signature"
 
     # Execute inside the Compose network: host port overrides do not affect checks.
-    $config = & docker compose exec -T gateway-service curl --fail --silent http://config-service:8888/user-service/default
-    if ($LASTEXITCODE -ne 0 -or -not (($config -join '') | ConvertFrom-Json).propertySources) { throw 'Config Git lookup failed' }
+    $configReader = (& docker compose exec -T gateway-service printenv SPRING_CLOUD_CONFIG_USERNAME) -join ''
+    if ($LASTEXITCODE -ne 0 -or -not $configReader) { throw 'Config reader username unavailable' }
+    $configPassword = (& docker compose exec -T gateway-service printenv SPRING_CLOUD_CONFIG_PASSWORD) -join ''
+    if ($LASTEXITCODE -ne 0 -or -not $configPassword) { throw 'Config reader password unavailable' }
+    $config = & docker compose exec -T gateway-service curl --fail --silent --cacert /run/config-trust/ca.crt --user ($configReader + ':' + $configPassword) https://config-service:8888/gateway-service/default
+    $configExitCode = $LASTEXITCODE
+    Remove-Variable configPassword
+    if ($configExitCode -ne 0 -or -not (($config -join '') | ConvertFrom-Json).propertySources) { throw 'Config Git lookup failed' }
     foreach ($service in @('user', 'policy', 'engagement', 'recommendation')) {
         $response = & docker compose exec -T gateway-service curl --fail --silent -H "Authorization: Bearer $token" "http://localhost:8000/_infra/health/$service"
         if ($LASTEXITCODE -ne 0 -or ($response -join '').Trim() -ne "$service-service OK") { throw "Gateway route failed: $service (wait for Eureka registry refresh and retry)" }

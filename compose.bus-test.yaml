@@ -1,6 +1,10 @@
 # Opt-in refresh probes, published only on the local machine.
 # docker compose -f compose.yaml -f compose.bus-test.yaml up --build -d
 services:
+  config-service:
+    environment:
+      CONFIG_ALLOWED_PROFILES: default,local,dev,docker,bus-test
+
   policy-service:
     environment:
       SPRING_PROFILES_ACTIVE: docker,bus-test
