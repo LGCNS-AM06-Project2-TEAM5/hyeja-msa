@@ -20,7 +20,7 @@ class ObservabilityConfigurationTest {
                     .isEqualTo("health,info,prometheus");
             assertThat(compose.getProperty(prefix + "environment.MONITORING_PASSWORD").toString())
                     .contains("MONITORING_PASSWORD:?");
-            assertThat(compose.getProperty(prefix + "volumes[1]")).isEqualTo("app-logs:/app/logs");
+            assertThat(compose.getProperty(prefix + "volumes[1]")).isEqualTo(service + "-logs:/app/logs");
             String module = service.equals("gateway") ? "infra" : "services";
             var sources = loader.load(service, new FileSystemResource(Path.of("../..", module,
                     service + "-service", "src/main/resources/application.yml")));
