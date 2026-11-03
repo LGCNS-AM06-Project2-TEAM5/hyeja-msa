@@ -2,6 +2,11 @@
 package com.hyeja.engagementservice;
 
 import com.hyeja.engagementservice.favorite.service.FavoriteService;
+import com.hyeja.engagementservice.client.policy.PolicyClient;
+import com.hyeja.engagementservice.client.policy.dto.PolicyApiResponse;
+import com.hyeja.engagementservice.client.policy.dto.PolicySnapshotDTO;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+
 import com.hyeja.engagementservice.policy.entity.Policy;
 import com.hyeja.engagementservice.policy.enums.*;
 import com.hyeja.engagementservice.policy.repository.PolicyRepository;
@@ -22,6 +27,8 @@ import static org.assertj.core.api.Assertions.*;
 @ActiveProfiles("test")
 @Transactional
 class FavoriteServiceTest {
+    @MockitoBean
+    PolicyClient policyClient;
 
     @Autowired
     FavoriteService favorites;
@@ -45,6 +52,10 @@ class FavoriteServiceTest {
         policy.setApplyPeriodCode(PolicyApplyPeriod.SPECIFIC_PERIOD);
         policy.setActiveYn(true);
         policies.saveAndFlush(policy);
+        org.mockito.Mockito.when(policyClient.getPolicy("P1")).thenReturn(new PolicyApiResponse<>(
+                true, "SUCCESS_001", "성공", new PolicySnapshotDTO("P1", policy.getPolicyName(),
+                policy.getCategories(), policy.getSupportContent(), policy.getApplyEndDate(),
+                policy.getApplyPeriodCode(), policy.getApplyUrl(), true, false)));
     }
 
     // 기존 테스트 1: 관심 등록 / 검색 / 삭제

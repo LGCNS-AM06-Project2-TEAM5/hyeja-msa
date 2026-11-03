@@ -1,13 +1,13 @@
 # Engagement API 명세서
 
-기준일: 2026-11-02. 현재 브랜치의 구현 기준이며, 미구현 연동은 마지막 절에 구분한다.
+기준일: 2026-11-03. 현재 브랜치의 구현 기준이며, 미구현 연동은 마지막 절에 구분한다.
 
 ## 1. 범위 및 인증
 
 - 외부 API 6개: 관심 등록·해제·목록, 알림 조회·읽음·삭제. 알림 생성은 스케줄러만 담당한다.
-- 현재 모든 업무 처리는 engagement DB 안에서 끝난다. Feign·Kafka 및 다른 서비스 내부 API는 구현하지 않았다.
+- 관심 등록은 F5 Feign으로 Policy 원본을 조회한 뒤 engagement DB에 저장한다. policy-updated 구독은 별도 Kafka 경로로 읽기 모델을 갱신한다.
 - 회원 ID는 숫자만 저장한다. 회원 존재·탈퇴 여부는 확인하지 않는다.
-- 정책 정보는 engagement DB의 `policy_snapshot` 읽기 모델이다. 관심 등록은 이 테이블에서 정책의 존재, 삭제 여부, `activeYn=true`를 확인한다. 정책 원본을 원격 조회하지 않는다.
+- 정책 정보는 engagement DB의 `policy_snapshot` 읽기 모델이다. 관심 등록은 매번 F5로 정책 유효성을 확인하고 스냅샷을 생성·갱신한다. 목록·알림은 로컬 읽기 모델을 조회한다.
 - Gateway는 사용자 JWT·블랙리스트를 검증하고 2분짜리 내부 JWT를 발급한다. engagement는 내부 JWT를 검증해 회원을 식별한다. [내부 인증 설계](../architecture/gateway-engagement-auth.md)를 참고한다.
 - 서비스 포트는 실행 설정을 따른다. 실제 Gateway 주소·포트는 Gateway 설정을 따른다.
 
@@ -46,11 +46,12 @@
 |---|---|---|
 | 400 | `COMMON_001` | 잘못된 쿼리·경로 타입, 필수 쿼리 누락, page<0, size<=0, 양수 제약 위반 등 |
 | 401 | `COMMON_002` | 내부 JWT 누락·서명 오류·만료·필수 claim 오류 |
-| 404 | `POLICY_001` | 로컬 정책 없음, 또는 등록 시 정책이 삭제·비활성 상태 |
+| 404 | `POLICY_001` | 등록 시 F5가 정책 없음·삭제·비활성을 반환하거나, 해제 시 로컬 정책 없음 |
 | 404 | `FAVORITE_002` | 본인의 등록된 관심 정책 없음 |
 | 404 | `NOTIFICATION_001` | 본인 알림 없음. 타 회원 알림도 동일 코드 |
 | 409 | `FAVORITE_001` | 회원·정책 중복 관심 등록 |
 | 500 | `SERVER_001` | 처리하지 못한 서버 오류 |
+| 503 | `SERVER_002` | F5 HTTP 오류·연결 실패·시간 초과·비정상 응답. 정책 없음으로 처리하지 않음 |
 
 현재 회원 확인을 하지 않으므로 `MEMBER_001`은 반환하지 않는다. 필드/객체 검증 오류는 공통 예외 처리상 `COMMON_003`과 오류 맵을 사용할 수 있으나, 현재 API의 scalar 쿼리·경로 제약은 주로 `COMMON_001`로 반환된다.
 
@@ -64,9 +65,9 @@
 
 | 위치 | 필드 | 타입 | 설명 |
 |---|---|---|---|
-| path | policyId | string | 로컬 읽기 모델의 정책 ID |
+| path | policyId | string | Policy 원본의 정책 ID |
 
-동작: 로컬 정책 유효성 확인 → 중복 확인 → 관심 저장. 성공 `result`는 아래 FavoriteItem이다. 동일 정책을 다시 등록하면 409. 해제 후 재등록은 새 favorite_id를 생성한다.
+동작: F5 정책 유효성 확인 → 로컬 스냅샷 생성·갱신 → 중복 확인 → 관심 저장. F5 호출 후 스냅샷과 관심 저장은 같은 로컬 트랜잭션으로 처리한다. 성공 `result`는 아래 FavoriteItem이다. 동일 정책을 다시 등록하면 409이며 스냅샷 변경도 롤백된다. 해제 후 재등록은 새 favorite_id를 생성한다. 신청 기간을 추가 검사하지 않으므로 마감·CLOSED 정책도 F5 성공 시 허용한다.
 
 ```json
 {
@@ -88,7 +89,7 @@
 }
 ```
 
-예시 날짜·ID는 설명용이며 실제 테스트 시 로컬 policy_snapshot에 데이터를 준비해야 한다.
+예시 날짜·ID는 설명용입니다. 실제 테스트 시에는 F5 정책 조회에 응답하는 서버가 필요합니다. 관심 등록 시 로컬 policy_snapshot은 F5 응답으로 생성·갱신됩니다.
 
 FavoriteItem 필드:
 
@@ -107,7 +108,7 @@ FavoriteItem 필드:
 
 분류 코드: `MONTHLY_RENT`=월세, `JEONSE`=전세, `PURCHASE`=청약·구입, `PUBLIC_RENT`=공공임대, `OTHER`=기타 주거. category_names와 category_codes를 배열 인덱스로 짝지으면 안 된다.
 
-오류: 공통 인증 오류, 404 `POLICY_001`, 409 `FAVORITE_001`.
+오류: 공통 인증 오류, 404 `POLICY_001`, 409 `FAVORITE_001`, 503 `SERVER_002`.
 
 ### 3.2 관심 목록·검색
 
@@ -238,7 +239,7 @@ path notificationId는 양수 Long. 본인 알림 행을 영구 삭제한다. �
 테스트는 H2를 사용한다. FavoriteServiceTest는 관심 중복·해제·재등록·검색·회원 격리와 HTTP JSON·인증을, NotificationServiceTest는 서울 날짜 기준 스케줄러 호출·D-7 계산·중복 방지·소유권·읽음·삭제 및 수동 생성 경로 제거를 확인한다. 생성은 스케줄러가 담당하며 테스트에서는 자정 대기 없이 같은 메서드를 호출한다. 실제 Gateway/Feign/Kafka/MariaDB 전체 연동과 자정 자동 실행은 검증 범위 밖이다.
 ## 6. Issue #6 상태와 추후 연동 계약
 
-[Issue #6](https://github.com/LGCNS-AM06-Project2-TEAM5/hyeja-msa/issues/6)에 기재된 외부 API 중 수동 생성을 제외한 6개 및 스케줄러·정책 읽기 모델을 구성했다. 수동 생성은 사용자 결정에 따라 제거했다. 내부 관심 여부 조회 F3·F4와 정책 확인 F5는 아직 미구현이므로 이슈 전체 완료로 처리하지 않는다.
+[Issue #6](https://github.com/LGCNS-AM06-Project2-TEAM5/hyeja-msa/issues/6)에 기재된 외부 API 중 수동 생성을 제외한 6개 및 스케줄러·정책 읽기 모델을 구성했다. 수동 생성은 사용자 결정에 따라 제거했다. F5 소비는 #90에서 구현하며 실제 서비스 간 연동 검증은 별도다. F3·F4 및 남은 이벤트 연동의 완료 여부는 별도 PR 기준으로 확인하며 이슈 전체 완료로 처리하지 않는다.
 
 현재 member는 스칼라 ID이고 정책 원본 DB와의 FK는 없다. 다만 favorite/notification의 policy는 같은 engagement DB의 policy_snapshot에 JPA 연관관계·FK를 유지한다. 이슈의 ‘ID만 저장’이 로컬 읽기 모델 관계까지 금지하는 의미인지는 팀에서 확정해야 한다. 현재 구조는 원격 DB JOIN을 하지 않는다.
 
@@ -246,7 +247,7 @@ path notificationId는 양수 Long. 본인 알림 행을 영구 삭제한다. �
 
 | 연결 | 현재 연결 지점 | 합의할 내용 |
 |---|---|---|
-| engagement → policy, F5 Feign | FavoriteService.createFavorite의 로컬 정책 조회 전 | 내부 경로·단건 DTO, 존재/삭제/비활성 의미, 반환할 스냅샷 필드, 404/장애 응답, 타임아웃·재시도. 유효성 실패 또는 장애 시 저장하지 않기 |
+| engagement → policy, F5 Feign | FavoriteService.createFavorite → PolicySnapshotReader → FavoriteRegistrationService | #90에서 합의된 계약 구현. 등록 때마다 호출, 404 POLICY_001 유지, 통신·응답 오류는 503 SERVER_002, 실패 시 저장하지 않음. 실제 연동은 별도 검증 |
 | policy/recommendation → engagement, F3·F4 Feign | FavoriteRepository.findActivePolicyIds | 내부 일괄 조회 경로·요청/응답 DTO, 인증된 회원 ID 전달 방식, 요청 최대 ID 수, 빈 목록·없는 ID 처리, 실패 시 하트 표시 정책. Repository만 존재하고 API는 미구현 |
 | policy → engagement, policy-updated Kafka | policy_snapshot 갱신, 검색·목록·D-7 대상 판단 | 필드·enum 표현, eventId/eventVersion/occurredAt, key=policyId, 정책 변경 버전·역순 이벤트 처리, 삭제/비활성 표현, 최초 데이터 적재·재동기화, 발행 신뢰성(Outbox 등), 재시도·DLT |
 | user → engagement, member-withdrawn Kafka | 회원 ID 기준 favorite/notification 삭제 | memberId와 공통 이벤트 메타데이터, DB 커밋 후 발행, eventId 중복 처리, 원자적 정리·재시도·DLT. 탈퇴 이벤트와 관심 등록이 경합하거나 이벤트가 늦게 도착할 때 재생성을 막을지 결정 |

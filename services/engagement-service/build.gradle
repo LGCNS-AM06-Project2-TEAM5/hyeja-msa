@@ -23,6 +23,8 @@ ext {
 }
 
 dependencies {
+    implementation 'org.springframework.cloud:spring-cloud-starter-openfeign'
+    implementation 'org.springframework.cloud:spring-cloud-starter-loadbalancer'
     runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
     implementation 'org.springframework.cloud:spring-cloud-starter-bus-kafka'
     // policy-updated 구독(policy_snapshot 갱신)
