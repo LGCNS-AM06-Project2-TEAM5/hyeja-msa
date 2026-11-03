@@ -17,12 +17,15 @@ Compose v2 이상, 이미지/Gradle 의존성/GitHub 접근이 가능한 네트�
 | `POLICY_DB_PASSWORD` | policy_app / policy_db |
 | `ENGAGEMENT_DB_PASSWORD` | engagement_app / engagement_db |
 | `JWT_SECRET` | User와 Gateway가 공유하는 최소 32바이트 UTF-8 키 |
+| `GATEWAY_ENGAGEMENT_SECRET` | Gateway·engagement 전용 내부 JWT 키. JWT_SECRET과 다른 무작위 값, 최소 32 UTF-8 바이트 |
 
 비밀번호는 서로 다르게 설정합니다. 실제 비밀값은 커밋하지 않습니다.
 Compose는 필요한 변수만 서비스에 명시적으로 전달합니다. 전체 `.env`를 주입하지 않아
 기존 `SERVER_PORT=8080`, `DB_NAME=hyeja`, `DB_USERNAME=root`, `REDIS_HOST=localhost`가
 컨테이너 설정을 덮어쓰지 않습니다. 관리자 계정은 주입하지 않습니다.
 외부 API/메일 키는 필요한 비즈니스 서비스에만 전달합니다.
+
+user-service는 docker 프로필에서 `application-dev.yml`을 읽지 않으므로 Compose가 SMTP host·port 및 인증/TLS 설정을 전달합니다. `MAIL_HOST` 기본값은 smtp.gmail.com, `MAIL_PORT` 기본값은 587입니다. 실제 인증 메일 발송에는 `MAIL_USERNAME`·`MAIL_PASSWORD`가 필요합니다. 로컬 Compose의 health check는 외부 SMTP의 가용성·자격증명에 의존하지 않도록 mail health indicator를 끕니다. 메일 발송 자체를 끄거나 발송 실패를 성공으로 처리하지는 않습니다.
 
 ## 실행
 

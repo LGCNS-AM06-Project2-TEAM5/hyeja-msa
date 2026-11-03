@@ -8,15 +8,15 @@
 - 현재 모든 업무 처리는 engagement DB 안에서 끝난다. Feign·Kafka 및 다른 서비스 내부 API는 구현하지 않았다.
 - 회원 ID는 숫자만 저장한다. 회원 존재·탈퇴 여부는 확인하지 않는다.
 - 정책 정보는 engagement DB의 `policy_snapshot` 읽기 모델이다. 관심 등록은 이 테이블에서 정책의 존재, 삭제 여부, `activeYn=true`를 확인한다. 정책 원본을 원격 조회하지 않는다.
-- 실제 서비스에서는 Gateway가 JWT를 검증하고 사용자 식별 헤더를 설정한다. engagement 자체는 JWT를 검증하지 않으므로 내부 네트워크에서만 접근하도록 배포해야 한다.
+- Gateway는 사용자 JWT·블랙리스트를 검증하고 2분짜리 내부 JWT를 발급한다. engagement는 내부 JWT를 검증해 회원을 식별한다. [내부 인증 설계](../architecture/gateway-engagement-auth.md)를 참고한다.
 - 서비스 포트는 실행 설정을 따른다. 실제 Gateway 주소·포트는 Gateway 설정을 따른다.
 
 | 헤더 | 필수 | 규칙 |
 |---|---|---|
-| `X-Member-Id` | 모든 API | 양수 Long. 누락·숫자 변환 실패·0 이하는 401 |
-| `Authorization: Bearer ...` | Gateway 접근 시 | Gateway가 검증. 로컬 직접 호출에는 불필요 |
+| `X-Gateway-Assertion` | Gateway → engagement | Gateway가 생성한 내부 JWT. 클라이언트가 직접 설정하지 않음 |
+| `Authorization: Bearer ...` | 클라이언트 → Gateway | 기존 사용자 JWT. Gateway에서 검증 |
 
-모든 API의 회원 ID는 헤더를 사용한다. 모든 요청은 Body가 없다. 수동 알림 생성 API는 제공하지 않는다.
+모든 API의 회원 ID는 검증된 내부 JWT의 sub에서 principal로 전달한다. X-Member-Id 헤더는 무시한다. 모든 요청은 Body가 없다. 수동 알림 생성 API는 제공하지 않는다.
 
 ## 2. 공통 응답
 
@@ -45,7 +45,7 @@
 | HTTP | 코드 | 발생 조건 |
 |---|---|---|
 | 400 | `COMMON_001` | 잘못된 쿼리·경로 타입, 필수 쿼리 누락, page<0, size<=0, 양수 제약 위반 등 |
-| 401 | `COMMON_002` | 회원 식별 헤더 누락·잘못된 값 |
+| 401 | `COMMON_002` | 내부 JWT 누락·서명 오류·만료·필수 claim 오류 |
 | 404 | `POLICY_001` | 로컬 정책 없음, 또는 등록 시 정책이 삭제·비활성 상태 |
 | 404 | `FAVORITE_002` | 본인의 등록된 관심 정책 없음 |
 | 404 | `NOTIFICATION_001` | 본인 알림 없음. 타 회원 알림도 동일 코드 |
@@ -250,7 +250,7 @@ path notificationId는 양수 Long. 본인 알림 행을 영구 삭제한다. �
 | policy/recommendation → engagement, F3·F4 Feign | FavoriteRepository.findActivePolicyIds | 내부 일괄 조회 경로·요청/응답 DTO, 인증된 회원 ID 전달 방식, 요청 최대 ID 수, 빈 목록·없는 ID 처리, 실패 시 하트 표시 정책. Repository만 존재하고 API는 미구현 |
 | policy → engagement, policy-updated Kafka | policy_snapshot 갱신, 검색·목록·D-7 대상 판단 | 필드·enum 표현, eventId/eventVersion/occurredAt, key=policyId, 정책 변경 버전·역순 이벤트 처리, 삭제/비활성 표현, 최초 데이터 적재·재동기화, 발행 신뢰성(Outbox 등), 재시도·DLT |
 | user → engagement, member-withdrawn Kafka | 회원 ID 기준 favorite/notification 삭제 | memberId와 공통 이벤트 메타데이터, DB 커밋 후 발행, eventId 중복 처리, 원자적 정리·재시도·DLT. 탈퇴 이벤트와 관심 등록이 경합하거나 이벤트가 늦게 도착할 때 재생성을 막을지 결정 |
-| gateway → engagement | GatewayIdentityConfig 및 controller의 헤더 수신 | 회원 ID 헤더 계약, 외부 주입 헤더 제거, 서비스 직접 접근 제한, Gateway 통합 테스트 |
+| gateway → engagement | GatewayTokenVerifier·보안 필터·principal | 대칭키 내부 JWT 인증 구현. TLS·네트워크 접근 제한·키 교체는 운영 인프라 협의 |
 
 정책명은 읽기 모델에서 조회하므로 갱신 이벤트 적용 후 목록·알림 응답에 반영된다. 알림의 마감일은 생성 당시 값이다. 정책 변경·삭제를 이유로 기존 관심·알림을 자동 삭제하는 기능은 추가하지 않는다. 회원 탈퇴는 이벤트 반영 전까지 로컬에서 알 수 없다는 지연 특성을 합의해야 한다.
 

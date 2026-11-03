@@ -54,6 +54,7 @@ Gateway를 재시작하면 됩니다. 원격 파일은 이 작업에서 변경�
 ## 인증 실행 환경
 
 - `JWT_SECRET`: User 서비스와 동일한 UTF-8 서명 키(최소 32바이트). 필수이며 기본값은 없습니다.
+- `GATEWAY_ENGAGEMENT_SECRET`: engagement 전용 내부 JWT 키. JWT_SECRET과 다른 무작위 키(최소 32 UTF-8 바이트), 필수.
 - `REDIS_HOST`: User 서비스가 사용하는 Redis 호스트(기본 `localhost`)
 - `REDIS_PORT`: Redis 포트(기본 `6379`)
 - `REDIS_DATABASE`: Redis DB 번호(기본 `0`, User 서비스와 같아야 함)
@@ -63,7 +64,7 @@ IntelliJ Run Configuration의 Environment variables 또는 실행 터미널의 �
 JWT 키가 없거나 너무 짧으면 Gateway가 기동하지 않습니다.
 
 `JwtVerifier`는 기존 User 토큰의 `sub`(회원 ID), `role`, `exp`와 서명을 검증합니다.
-Gateway는 로그인/회원 DB 조회/토큰 발급을 수행하지 않습니다.
+Gateway는 로그인·회원 DB 조회·사용자 토큰 발급을 수행하지 않습니다. engagement 전달용 내부 JWT는 별도로 발급합니다.
 원래 Authorization 헤더를 그대로 전달하여 User의 기존 인증 필터와
 `@AuthenticationPrincipal`, 로그아웃 처리를 유지할 수 있습니다.
 
@@ -73,7 +74,7 @@ Gateway는 저장/삭제하지 않습니다. Redis 조회 실패 시 503 `GATEWA
 실제 User 로그아웃과 공유 Redis 연동은 User 서비스 연결 후 추가 확인해야 합니다.
 
 외부의 `X-Member-Id`, `X-Member-Role`은 제거한 뒤 검증된 값으로 설정합니다.
-각 서비스는 원본 JWT 검증 및 자기 데이터의 소유권 검사를 유지해야 합니다.
+engagement에는 별도 HS256 내부 JWT를 X-Gateway-Assertion으로 전달합니다. 외부에서 주입한 이 헤더는 제거하며 다른 서비스에는 전달하지 않습니다. engagement는 서명·발급자·수신 대상·2분 수명을 검증하고 토큰의 회원 ID만 사용합니다. 다른 서비스의 기존 인증 방식은 유지합니다. [상세 계약](../../docs/architecture/gateway-engagement-auth.md)
 인증 실패는 401 `COMMON_002`, 권한 부족은 403 `COMMON_004`로 응답합니다.
 공개 API도 잘못된 토큰을 보내면 401입니다(기존 필터보다 엄격한 README 요구사항).
 
