@@ -61,6 +61,8 @@ class PolicyMemberDetailIntegrationTest {
     static void userServiceUrl(DynamicPropertyRegistry registry) {
         registry.add("spring.cloud.openfeign.client.config.userClient.url",
                 () -> "http://localhost:" + USER_SERVICE.getAddress().getPort());
+        registry.add("spring.cloud.openfeign.client.config.engagementClient.url",
+                () -> "http://localhost:" + USER_SERVICE.getAddress().getPort());
     }
 
     @AfterAll
@@ -88,7 +90,7 @@ class PolicyMemberDetailIntegrationTest {
         mvc.perform(get("/api/policies/member-detail").header("X-Member-Id", "1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.result.overallStatus").value("ABLE"))
-                .andExpect(jsonPath("$.result.isFavorite").value(false))
+                .andExpect(jsonPath("$.result.isFavorite").value(true))
                 .andExpect(jsonPath("$.result.conditions.length()").value(5))
                 .andExpect(jsonPath("$.result.conditions[0].type").value("AGE"))
                 .andExpect(jsonPath("$.result.conditions[0].memberValue").value("만 26세"))
@@ -105,9 +107,10 @@ class PolicyMemberDetailIntegrationTest {
     }
 
     @Test
-    void user_서비스가_실패하면_비로그인_상세로_응답한다() throws Exception {
+    void user_서비스가_실패하면_판정_없이_하트만_보여_준다() throws Exception {
         mvc.perform(get("/api/policies/member-detail").header("X-Member-Id", "3"))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.result.isFavorite").value(true))
                 .andExpect(jsonPath("$.result.policyName").value("청년 월세 지원"))
                 .andExpect(jsonPath("$.result.overallStatus").doesNotExist())
                 .andExpect(jsonPath("$.result.conditions.length()").value(0));
@@ -129,6 +132,12 @@ class PolicyMemberDetailIntegrationTest {
             server.createContext("/internal/members/3/profile", exchange -> respond(exchange, 500, """
                     {"isSuccess":false,"code":"SERVER_001","message":"서버 오류가 발생했습니다.","result":null}
                     """));
+            // engagement F4 대신: 요청 본문의 회원·정책 ID를 보고 관심 등록한 정책만 돌려줍니다.
+            server.createContext("/internal/favorites/active-policy-ids", exchange -> {
+                String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+                String result = !body.contains("\"memberId\":2") && body.contains("member-detail") ? "[\"member-detail\"]" : "[]";
+                respond(exchange, 200, "{\"isSuccess\":true,\"code\":\"SUCCESS_001\",\"message\":\"성공입니다.\",\"result\":" + result + "}");
+            });
             server.start();
             return server;
         } catch (IOException e) {

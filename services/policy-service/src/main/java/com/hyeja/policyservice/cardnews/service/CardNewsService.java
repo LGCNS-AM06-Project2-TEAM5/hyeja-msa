@@ -116,7 +116,7 @@ public class CardNewsService {
                         .map(category -> category.getLabel()).orElse(null),
                 calculateDDay(policy),
                 authenticated,
-                // 관심 여부는 engagement(F4) 연결 전까지 false입니다. 1차는 FavoriteRepository로 확인했습니다.
+                // 관심 여부는 DB 트랜잭션이 끝난 뒤 컨트롤러가 engagement(F4)로 채웁니다(CardNewsDetailResponseDTO.withFavorite).
                 false,
                 policy.getApplyUrl(),
                 cards);
