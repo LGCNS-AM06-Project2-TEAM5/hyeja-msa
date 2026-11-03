@@ -5,6 +5,15 @@ spring:
   application:
     name: config-service
   cloud:
+    bus:
+      enabled: true
+      destination: hyeja-config-bus
+      id: ${spring.application.name}:${INSTANCE_ID:${random.uuid}}
+    stream:
+      kafka:
+        binder:
+          brokers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:19092}
+          auto-create-topics: false
     config:
       server:
         git:
@@ -21,4 +30,8 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health,info,busrefresh
+
+config-security:
+  admin-username: ${CONFIG_ADMIN_USERNAME:config-admin}
+  admin-password: ${CONFIG_ADMIN_PASSWORD}

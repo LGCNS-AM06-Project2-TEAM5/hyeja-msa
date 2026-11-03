@@ -16,6 +16,7 @@ x-app-environment: &app-environment
   REDIS_PORT: "6379"
   REDIS_DATABASE: "0"
   SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+  KAFKA_BOOTSTRAP_SERVERS: kafka:9092
   SPRING_KAFKA_LISTENER_OBSERVATION_ENABLED: "true"
   SPRING_KAFKA_TEMPLATE_OBSERVATION_ENABLED: "true"
   JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=60.0"
@@ -121,7 +122,7 @@ services:
     entrypoint: ["/bin/bash", "-ec"]
     command:
       - |
-        for topic in member-registered policy-updated notification-created; do
+        for topic in member-registered policy-updated notification-created hyeja-config-bus; do
           /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic "$$topic" --partitions 1 --replication-factor 1
         done
 
@@ -159,11 +160,16 @@ services:
       EUREKA_SERVER_URL: http://discovery-service:8761/eureka/
       SPRING_CLOUD_CONFIG_SERVER_GIT_URI: ${CONFIG_GIT_URI:-https://github.com/LGCNS-AM06-Project2-TEAM5/hyeja-config.git}
       SPRING_CLOUD_CONFIG_SERVER_GIT_DEFAULT_LABEL: ${CONFIG_GIT_LABEL:-main}
+      CONFIG_ADMIN_USERNAME: ${CONFIG_ADMIN_USERNAME:-config-admin}
+      CONFIG_ADMIN_PASSWORD: ${CONFIG_ADMIN_PASSWORD:?Set CONFIG_ADMIN_PASSWORD for bus refresh}
+      MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,info,busrefresh
     ports:
       - "127.0.0.1:${CONFIG_HOST_PORT:-8888}:8888"
     depends_on:
       discovery-service:
         condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
 
   gateway-service:
     <<: *app
@@ -182,6 +188,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
 
   user-service:
     <<: *app

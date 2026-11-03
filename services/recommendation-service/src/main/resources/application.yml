@@ -1,4 +1,14 @@
 spring:
+  cloud:
+    bus:
+      enabled: true
+      destination: hyeja-config-bus
+      id: ${spring.application.name}:${INSTANCE_ID:${random.uuid}}
+    stream:
+      kafka:
+        binder:
+          brokers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:19092}
+          auto-create-topics: false
   application:
     name: recommendation-service
 

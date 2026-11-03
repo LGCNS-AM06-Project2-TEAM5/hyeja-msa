@@ -20,6 +20,15 @@ spring:
 
   # 다른 서비스 내부 API(Feign). 오래 기다리지 않고 실패 처리(F6 상세는 비로그인 응답으로 대신)
   cloud:
+    bus:
+      enabled: true
+      destination: hyeja-config-bus
+      id: ${spring.application.name}:${INSTANCE_ID:${random.uuid}}
+    stream:
+      kafka:
+        binder:
+          brokers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:19092}
+          auto-create-topics: false
     openfeign:
       client:
         config:
