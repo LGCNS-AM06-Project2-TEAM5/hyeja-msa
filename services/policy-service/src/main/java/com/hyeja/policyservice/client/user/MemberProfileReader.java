@@ -31,7 +31,7 @@ public class MemberProfileReader {
         } catch (FeignException e) {
             throw translate(e, memberId);
         }
-        if (response == null || response.result() == null) {
+        if (response == null || !Boolean.TRUE.equals(response.isSuccess()) || response.result() == null) {
             log.warn("user-service 회원 조건 응답이 비어 있습니다. memberId={}", memberId);
             throw new GeneralException(ErrorStatus.USER_SERVICE_UNAVAILABLE);
         }
