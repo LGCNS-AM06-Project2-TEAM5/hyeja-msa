@@ -4,6 +4,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.net.URI;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -40,6 +41,14 @@ class InternalTokenFilterTest {
         mvc.perform(get("/internal/policies/none").header(InternalToken.HEADER, "test-internal-token"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("POLICY_001"));
+    }
+
+    @Test
+    void 경로를_인코딩하거나_세미콜론을_붙여도_막는다() throws Exception {
+        mvc.perform(get(URI.create("/%69nternal/policies/none")))
+                .andExpect(status().isUnauthorized());
+        mvc.perform(get(URI.create("/internal;x=1/policies/none")))
+                .andExpect(status().isUnauthorized());
     }
 
     @Test

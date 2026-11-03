@@ -14,6 +14,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import org.springframework.web.util.UrlPathHelper;
 import tools.jackson.databind.json.JsonMapper;
 
 // 다른 서비스가 부르는 내부 API(/internal/**)는 X-Internal-Token이 공유 비밀값과 같을 때만 통과시킵니다(11-03 팀 결정).
@@ -22,6 +23,8 @@ import tools.jackson.databind.json.JsonMapper;
 @Slf4j
 @Component
 public class InternalTokenFilter extends OncePerRequestFilter {
+
+    private static final UrlPathHelper PATH_HELPER = new UrlPathHelper();
 
     private final byte[] expectedToken;
     private final JsonMapper jsonMapper;
@@ -34,9 +37,12 @@ public class InternalTokenFilter extends OncePerRequestFilter {
         }
     }
 
+    // 원본 URI(%69nternal, //internal, ;x 등)가 아니라 Spring MVC가 컨트롤러를 찾을 때와 같은 디코딩·정리된 경로로 판단합니다.
+    // 원본으로 비교하면 필터는 건너뛰고 컨트롤러는 /internal로 찾아가는 우회가 생깁니다.
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        return !request.getRequestURI().startsWith(request.getContextPath() + "/internal/");
+        String path = PATH_HELPER.getPathWithinApplication(request).replaceAll("/{2,}", "/");
+        return !(path.equals("/internal") || path.startsWith("/internal/"));
     }
 
     @Override
