@@ -1,3 +1,4 @@
+
 package com.hyeja.engagementservice.favorite.service;
 
 import com.hyeja.engagementservice.favorite.converter.FavoriteConverter;
@@ -5,11 +6,14 @@ import com.hyeja.engagementservice.favorite.dto.FavoriteResponseDTO.FavoriteItem
 import com.hyeja.engagementservice.favorite.dto.FavoriteResponseDTO.FavoriteListDTO;
 import com.hyeja.engagementservice.favorite.entity.Favorite;
 import com.hyeja.engagementservice.favorite.repository.FavoriteRepository;
-
 import com.hyeja.engagementservice.policy.entity.Policy;
 import com.hyeja.engagementservice.policy.repository.PolicyRepository;
 import com.hyeja.engagementservice.global.apiPayload.status.ErrorStatus;
 import com.hyeja.engagementservice.global.exception.GeneralException;
+
+import java.util.List;
+import java.util.Set;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
@@ -68,8 +72,23 @@ public class FavoriteService {
         Page<Favorite> favorites = normalizedKeyword == null
                 ? favoriteRepository.findAllActiveByMemberId(memberId, pageRequest)
                 : favoriteRepository.searchAllActiveByMemberIdAndKeyword(
-                        memberId, normalizedKeyword, pageRequest);
+                memberId, normalizedKeyword, pageRequest);
         return FavoriteConverter.toFavoriteListDTO(favorites);
+    }
+
+    // F3: Recommendation Service에서 요청한 관심 정책 ID 일괄 조회
+    public List<String> findActivePolicyIds(Long memberId, List<String> policyIds) {
+        if (policyIds == null || policyIds.isEmpty()) {
+            return List.of();
+        }
+
+        Set<String> activeIds =
+                favoriteRepository.findActivePolicyIds(memberId, policyIds);
+
+        return policyIds.stream()
+                .filter(activeIds::contains)
+                .distinct()
+                .toList();
     }
 
     private String normalizeKeyword(String keyword) {
