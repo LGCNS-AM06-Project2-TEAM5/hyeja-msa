@@ -22,6 +22,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(spec -> spec
                         .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                         .requestMatchers("/actuator/health", "/actuator/health/**", "/api/health", "/health-check").permitAll()
+                        .requestMatchers("/internal/**").permitAll()
                         .anyRequest().authenticated())
                 .addFilterBefore(new GatewayAuthenticationFilter(verifier), UsernamePasswordAuthenticationFilter.class)
                 .build();
