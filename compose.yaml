@@ -22,6 +22,8 @@ x-app-environment: &app-environment
 
 x-business-environment: &business-environment
   <<: *app-environment
+  SPRING_CLOUD_CONFIG_USERNAME: ${CONFIG_READER_USERNAME:-config-reader}
+  SPRING_CLOUD_CONFIG_PASSWORD: ${CONFIG_READER_PASSWORD:?Set CONFIG_READER_PASSWORD (16+ characters)}
   JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env (at least 32 UTF-8 bytes)}
 
 x-app: &app
@@ -159,6 +161,11 @@ services:
       EUREKA_SERVER_URL: http://discovery-service:8761/eureka/
       SPRING_CLOUD_CONFIG_SERVER_GIT_URI: ${CONFIG_GIT_URI:-https://github.com/LGCNS-AM06-Project2-TEAM5/hyeja-config.git}
       SPRING_CLOUD_CONFIG_SERVER_GIT_DEFAULT_LABEL: ${CONFIG_GIT_LABEL:-main}
+      CONFIG_ENCRYPT_KEY: ${CONFIG_ENCRYPT_KEY:?Set a separate CONFIG_ENCRYPT_KEY (32+ UTF-8 bytes)}
+      CONFIG_READER_USERNAME: ${CONFIG_READER_USERNAME:-config-reader}
+      CONFIG_READER_PASSWORD: ${CONFIG_READER_PASSWORD:?Set CONFIG_READER_PASSWORD (16+ characters)}
+      CONFIG_ADMIN_USERNAME: ${CONFIG_ADMIN_USERNAME:-config-admin}
+      CONFIG_ADMIN_PASSWORD: ${CONFIG_ADMIN_PASSWORD:?Set a separate CONFIG_ADMIN_PASSWORD (16+ characters)}
     ports:
       - "127.0.0.1:${CONFIG_HOST_PORT:-8888}:8888"
     depends_on:
@@ -172,6 +179,8 @@ services:
       dockerfile: infra/gateway-service/Dockerfile
     environment:
       <<: *app-environment
+      SPRING_CLOUD_CONFIG_USERNAME: ${CONFIG_READER_USERNAME:-config-reader}
+      SPRING_CLOUD_CONFIG_PASSWORD: ${CONFIG_READER_PASSWORD:?Set CONFIG_READER_PASSWORD (16+ characters)}
       SERVER_PORT: "8000"
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env (at least 32 UTF-8 bytes)}
     ports:

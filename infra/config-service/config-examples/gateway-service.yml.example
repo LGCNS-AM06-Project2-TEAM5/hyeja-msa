@@ -1,0 +1,4 @@
+# Copy to the separate Config Git repository only after replacing the placeholder.
+# Never copy the encryption master key or Config Basic Auth passwords here.
+internal-auth:
+  secret: '{cipher}<replace-with-encrypt-response>'

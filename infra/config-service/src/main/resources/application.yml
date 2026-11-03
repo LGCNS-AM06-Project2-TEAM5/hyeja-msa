@@ -7,10 +7,23 @@ spring:
   cloud:
     config:
       server:
+        encrypt:
+          enabled: true
+          prefix-invalid-properties: true
         git:
           uri: https://github.com/LGCNS-AM06-Project2-TEAM5/hyeja-config.git
           default-label: main
           clone-on-start: true
+
+# These bootstrap secrets must be injected outside the configuration Git repository.
+encrypt:
+  key: ${CONFIG_ENCRYPT_KEY}
+
+config-security:
+  reader-username: ${CONFIG_READER_USERNAME:config-reader}
+  reader-password: ${CONFIG_READER_PASSWORD}
+  admin-username: ${CONFIG_ADMIN_USERNAME:config-admin}
+  admin-password: ${CONFIG_ADMIN_PASSWORD}
 
 eureka:
   client:
@@ -22,3 +35,11 @@ management:
     web:
       exposure:
         include: health,info
+  endpoint:
+    health:
+      show-details: never
+
+# Upstream decrypt-error logging includes request content; never log that payload.
+logging:
+  level:
+    org.springframework.cloud.config.server.encryption.EncryptionController: "OFF"
