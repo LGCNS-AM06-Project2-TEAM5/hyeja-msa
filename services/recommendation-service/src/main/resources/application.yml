@@ -18,8 +18,21 @@ spring:
         options:
           model: ${OPEN_AI_MODEL}
 
-# 검색 API(GET /api/policies/search)는 user·policy·engagement Feign Client(F1·F2·F3)가 구현될 때까지 꺼 둡니다.
-# 켜면 ProfileClient·PolicyClient·FavoriteClient 구현 빈과 OPEN_AI_KEY·OPEN_AI_MODEL이 있어야 기동됩니다.
+  # F1·F2·F3 Feign 설정입니다. Client 이름은 Eureka 서비스 ID(user-service, policy-service, engagement-service)와 같게 둡니다.
+  # Timeout은 모든 Client 공통(default)이며, 서비스별로 다르게 하려면 같은 키를 Client 이름 아래에 둡니다(Config Server로도 덮어쓸 수 있습니다).
+  # 재시도는 하지 않습니다(Feign 기본 Retryer.NEVER_RETRY, spring-retry 없음). 장애를 빈 결과로 바꾸는 fallback도 두지 않습니다.
+  cloud:
+    openfeign:
+      client:
+        config:
+          default:
+            connect-timeout: ${FEIGN_CONNECT_TIMEOUT_MS:2000}
+            read-timeout: ${FEIGN_READ_TIMEOUT_MS:5000}
+          user-service:
+            error-decoder: com.hyeja.recommendationservice.profile.client.UserServiceErrorDecoder
+
+# 검색 API(GET /api/policies/search)는 서비스 간 인증 계약이 반영될 때까지 꺼 둡니다. F1·F2·F3 Feign Client는 구현됐습니다.
+# 켜면 OPEN_AI_KEY·OPEN_AI_MODEL이 있어야 기동됩니다. 인증 없이는 engagement가 F3를 401로 막아 관심 표시 없이 응답합니다.
 recommendation:
   search:
     enabled: false
