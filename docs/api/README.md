@@ -26,7 +26,7 @@ Gateway 라우팅과 인증 규칙은 [infra/gateway-service](../../infra/gatewa
 | F1 | recommendation → user | 회원의 내 조건 조회 | `PolicySearchService` → `ProfileService.getActiveProfile` | 검색 실패 응답 | 확정 (user) |
 | F2 | recommendation → policy | 정책 후보 일괄 조회 (판정에 필요한 조건과 신청 지역 포함) | `PolicyCandidateController` → `PolicyCandidateService` → `PolicyRepository.searchActivePolicies` | 검색 실패 응답 | 계약 합의·구현 완료 (아래 F2 계약) |
 | F3 | recommendation → engagement | 관심 여부 일괄 조회 | `FavoriteRepository.findActivePolicyIds` | 하트 없이 응답 | 설계서 |
-| F4 | policy → engagement | 관심 여부 일괄 조회 (목록·상세·카드뉴스) | `PolicyService`, `CardNewsService` | 하트 없이 응답 | 설계서 |
+| F4 | policy → engagement | 관심 여부 일괄 조회 (목록·상세·카드뉴스) | `PolicyMemberService`, `CardNewsController` → `FavoriteReader` | 하트 없이 응답 | policy 호출 구현. F3와 같은 `POST /internal/favorites/active-policy-ids`(요청 `memberId`·`policyIds` 20개까지, 응답 관심 등록한 정책 ID 목록) |
 | F5 | engagement → policy | 관심 등록 시 정책 존재·스냅샷 확인 | `PolicySnapshotController` → `PolicySnapshotService` → `PolicyRepository.findById` | 등록 실패 안내 | 계약 합의·이번 변경에서 구현 (아래 F5 계약) |
 | F6 | policy → user | 회원의 내 조건 조회 (`/housing/me` 필터, 상세 판정, 회원 카드뉴스) | `PolicyService` 200·249행, `CardNewsService` 60행 → `ProfileService` | 비로그인 응답과 같게 | 확정 (user) |
 
