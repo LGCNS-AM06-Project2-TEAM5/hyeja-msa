@@ -1,7 +1,4 @@
 spring:
-  cloud:
-    config:
-      uri: ${CONFIG_SERVER_URL:https://localhost:8888}
   application:
     name: policy-service
 
@@ -23,6 +20,8 @@ spring:
 
   # 다른 서비스 내부 API(Feign). 오래 기다리지 않고 실패 처리(F6 상세는 비로그인 응답으로 대신)
   cloud:
+    config:
+      uri: ${CONFIG_SERVER_URL:https://localhost:8888}
     openfeign:
       client:
         config:
