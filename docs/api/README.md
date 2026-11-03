@@ -89,6 +89,22 @@ Gateway 라우팅과 인증 규칙은 [infra/gateway-service](../../infra/gatewa
 
 공통 필드: `eventId`(중복 처리 확인), `eventType`, `eventVersion`, `occurredAt`, `aggregateId`. 개인정보와 토큰은 넣지 않습니다.
 
+`member-withdrawn` 본문:
+
+```json
+{
+  "eventId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+  "eventType": "member-withdrawn",
+  "eventVersion": 1,
+  "occurredAt": "2026-11-03T17:30:00+09:00",
+  "aggregateId": "1",
+  "memberId": 1
+}
+```
+
+- Kafka message key는 `memberId`의 문자열 표현을 사용합니다.
+- User Service는 Member·Profile 탈퇴 처리와 같은 트랜잭션에 Outbox 행을 기록합니다.
+
 `policy-updated` 본문(안): `policyId, policyName, categories, supportContent, applyEndDate, applyPeriodCode, applyUrl, activeYn, deleted`
 — engagement의 관심 목록 응답과 키워드 검색(정책명·지원 내용)에 필요한 값입니다.
 

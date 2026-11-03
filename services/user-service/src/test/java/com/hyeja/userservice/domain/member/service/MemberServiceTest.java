@@ -15,6 +15,7 @@ import com.hyeja.userservice.domain.member.dto.MemberLoginRequestDTO;
 import com.hyeja.userservice.domain.member.dto.MemberLoginResponseDTO;
 import com.hyeja.userservice.domain.member.dto.MemberSignupRequestDTO;
 import com.hyeja.userservice.domain.member.entity.Member;
+import com.hyeja.userservice.domain.member.event.MemberWithdrawnPublisher;
 import com.hyeja.userservice.domain.member.repository.MemberRepository;
 import com.hyeja.userservice.domain.profile.dto.ProfileRequestDTO;
 import com.hyeja.userservice.domain.profile.entity.Profile;
@@ -57,6 +58,8 @@ class MemberServiceTest {
     private TokenBlacklist tokenBlacklist;
     @Mock
     private EmailVerificationService emailVerificationService;
+    @Mock
+    private MemberWithdrawnPublisher memberWithdrawnPublisher;
     @InjectMocks
     private MemberService memberService;
 
@@ -188,6 +191,7 @@ class MemberServiceTest {
 
         assertThat(member.isDeleted()).isTrue();
         assertThat(profile.isDeleted()).isTrue();
+        verify(memberWithdrawnPublisher).publish(1L);
         verify(tokenBlacklist).add(eq("access-token"), any(Duration.class));
     }
 
@@ -204,6 +208,7 @@ class MemberServiceTest {
 
         assertThat(member.isDeleted()).isFalse();
         verify(profileRepository, never()).findById(any());
+        verify(memberWithdrawnPublisher, never()).publish(any());
         verify(tokenBlacklist, never()).add(any(), any());
     }
 
@@ -218,6 +223,7 @@ class MemberServiceTest {
         assertWithdrawalMemberNotFound(2L);
 
         verify(passwordEncoder, never()).matches(any(), any());
+        verify(memberWithdrawnPublisher, never()).publish(any());
         verify(tokenBlacklist, never()).add(any(), any());
     }
 
