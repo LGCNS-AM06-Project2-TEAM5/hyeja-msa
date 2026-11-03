@@ -29,3 +29,35 @@ server:
 # Gateway와 같은 환경변수를 사용합니다. 실제 키는 저장소에 커밋하지 않습니다.
 jwt:
   secret: ${JWT_SECRET}
+
+---
+# Local defaults; Docker environment variables override infrastructure addresses.
+logging:
+  include-application-name: false
+  pattern:
+    correlation: '[${spring.application.name:},%X{traceId:-},%X{spanId:-}] '
+  file:
+    name: ${LOG_DIR:./logs}/${spring.application.name}.log
+  logback:
+    rollingpolicy:
+      max-file-size: ${LOG_MAX_FILE_SIZE:10MB}
+      max-history: 7
+      total-size-cap: 1GB
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  tracing:
+    sampling:
+      probability: ${TRACING_SAMPLING_PROBABILITY:0.1}
+    export:
+      zipkin:
+        endpoint: ${ZIPKIN_ENDPOINT:http://localhost:9411/api/v2/spans}
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true

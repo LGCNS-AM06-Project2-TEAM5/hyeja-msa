@@ -30,3 +30,35 @@ spring:
     # 테스트 외 실행에서는 환경변수로 지정한 Config Server를 조회합니다.
     # Config Server가 없어도 기동할 수 있도록 optional을 유지합니다.
     import: "optional:configserver:${CONFIG_SERVER_URL:https://localhost:8888}"
+
+---
+# Local defaults; Docker environment variables override infrastructure addresses.
+logging:
+  include-application-name: false
+  pattern:
+    correlation: '[${spring.application.name:},%X{traceId:-},%X{spanId:-}] '
+  file:
+    name: ${LOG_DIR:./logs}/${spring.application.name}.log
+  logback:
+    rollingpolicy:
+      max-file-size: ${LOG_MAX_FILE_SIZE:10MB}
+      max-history: 7
+      total-size-cap: 1GB
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  tracing:
+    sampling:
+      probability: ${TRACING_SAMPLING_PROBABILITY:0.1}
+    export:
+      zipkin:
+        endpoint: ${ZIPKIN_ENDPOINT:http://localhost:9411/api/v2/spans}
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true

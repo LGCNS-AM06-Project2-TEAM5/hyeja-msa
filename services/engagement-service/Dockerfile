@@ -12,6 +12,7 @@ FROM eclipse-temurin:17-jre-jammy
 RUN apt-get update && apt-get install -y --no-install-recommends curl && \
     rm -rf /var/lib/apt/lists/* && groupadd --system app && useradd --system --gid app app
 WORKDIR /app
+RUN mkdir -p /app/logs && chown app:app /app/logs
 COPY --from=build --chown=app:app /app.jar app.jar
 USER app
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]
