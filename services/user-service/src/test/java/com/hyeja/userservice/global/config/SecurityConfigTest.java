@@ -34,4 +34,12 @@ class SecurityConfigTest {
                 .andExpect(jsonPath("$.isSuccess").value(false))
                 .andExpect(jsonPath("$.code").value("COMMON_002"));
     }
+
+    @Test
+    void internalProfileIsReachableWithoutToken() throws Exception {
+        // 서비스 간 호출에는 사용자 JWT가 없으므로 401이 아니라 실제 처리 결과(없는 회원 404)가 나와야 합니다.
+        mvc.perform(get("/internal/members/999/profile"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("MEMBER_001"));
+    }
 }

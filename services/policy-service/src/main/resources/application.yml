@@ -21,6 +21,15 @@ spring:
         options:
           model: ${OPEN_AI_MODEL}
 
+  # 다른 서비스 내부 API(Feign). 오래 기다리지 않고 실패 처리(F6 상세는 비로그인 응답으로 대신)
+  cloud:
+    openfeign:
+      client:
+        config:
+          default:
+            connect-timeout: 1000
+            read-timeout: 2000
+
 server:
   # 실행 시 사용 가능한 랜덤 포트 자동 할당
   port: 0

@@ -51,6 +51,14 @@
 
 상세 응답의 `isFavorite`·`overallStatus`·`conditions`는 `PolicyMemberDetailDTO` 값을 그대로 옮겨 담으면 됩니다.
 
+## 다른 서비스 호출 (Feign)
+
+| 호출 | 클라이언트 | 실패할 때 |
+|---|---|---|
+| F6 회원 조건 (→ user `GET /internal/members/{memberId}/profile`) | `UserClient`는 직접 쓰지 않고 `MemberProfileReader.getActiveProfile`을 씁니다 | `MEMBER_001`·`PROFILE_001`은 그대로 돌려주고, 연결 실패·시간 초과·5xx는 503 `SERVER_002`. 정책 상세는 이 경우 비로그인 응답으로 대신합니다 |
+
+시간 제한은 `application.yml`의 `spring.cloud.openfeign.client.config.default`(연결 1초, 응답 2초)입니다. 서비스 주소는 Eureka에서 찾습니다.
+
 ## 로컬 개발 실행
 
 - `application.yml`: 서비스 이름, Config Server 연결, 랜덤 포트 등 공통 설정.
@@ -149,3 +157,13 @@ PR #37의 공통 회원 헤더 리졸버는 현재 브랜치에 없어 직접 �
 - 원본 목록 DTO의 Swagger 설명용 어노테이션은 현재 서비스에 Swagger 의존성이 없어 제외했으며 JSON 매핑은 유지했습니다. 지역 요약은 원본 summarize 규칙만 목록 Converter에 옮겼습니다.
 
 Issue #45는 선행 수집 PR #44 위의 작업입니다. 회원 연결 지점은 #40과의 의존성이 있으며 회원 업무·Feign·F2/F5 구현은 이번 범위에 포함하지 않습니다.
+
+
+## F2 내부 정책 후보 조회 (Issue #53)
+
+`POST /internal/policies/candidates`로 카테고리·시군구 코드·기준 날짜를 받아
+추천·검색에 필요한 정책 후보 최대 20건과 전체 대상 지역·자격 조건을 반환합니다.
+원본 `3e47bb1`의 후보 조회 규칙을 유지하며 판정·관심 조회·AI 호출은 수행하지 않습니다.
+날짜는 Recommendation이 전달하며 Policy 서버의 오늘 날짜로 덮어쓰지 않습니다.
+요청·응답·오류·내부 인증 미확정 상태는 [F2 계약](../../docs/api/README.md#f2-정책-후보-조회-issue-53)을 따릅니다.
+기존 `/api/policies/housing` 목록과 F5 구현은 이번 작업 범위에 포함하지 않습니다.
