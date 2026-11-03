@@ -7,7 +7,7 @@ spring:
   profiles:
     default: local
   config:
-    import: "configserver:${CONFIG_SERVER_URL:http://localhost:8888}"
+    import: "configserver:${CONFIG_SERVER_URL:https://localhost:8888}"
   data:
     redis:
       host: ${REDIS_HOST:localhost}
@@ -15,6 +15,8 @@ spring:
       database: ${REDIS_DATABASE:0}
       timeout: 2s
   cloud:
+    config:
+      uri: ${CONFIG_SERVER_URL:https://localhost:8888}
     gateway:
       server:
         webflux:

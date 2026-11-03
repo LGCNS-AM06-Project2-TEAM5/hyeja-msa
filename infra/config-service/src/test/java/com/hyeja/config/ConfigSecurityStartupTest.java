@@ -1,39 +1,38 @@
 package com.hyeja.config;
 
+import com.hyeja.config.security.ConfigAccessProperties;
 import com.hyeja.config.security.ConfigSecurityConfiguration;
+import java.util.Map;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.autoconfigure.AutoConfigurations;
-import org.springframework.boot.autoconfigure.context.PropertyPlaceholderAutoConfiguration;
-import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import static org.assertj.core.api.Assertions.*;
 
 class ConfigSecurityStartupTest {
-    // Constructor validation is also exercised independently of servlet auto-configuration.
-    @Test void missingWeakAndReusedBootstrapSecretsAreRejected() {
-        var runner = new ApplicationContextRunner()
-                .withConfiguration(AutoConfigurations.of(PropertyPlaceholderAutoConfiguration.class))
-                .withBean(ConfigSecurityConfiguration.class);
-        runner.run(context -> assertThat(context).hasFailed());
-        assertThatThrownBy(() -> config(null, "reader-password-1234", "admin-password-5678"))
-                .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> config("test-config-key-with-at-least-32-bytes", "", "admin-password-5678"))
-                .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> config("short", "reader-password-1234", "admin-password-5678"))
-                .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> config("test-config-key-with-at-least-32-bytes", "short", "admin-password-5678"))
-                .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> config("test-config-key-with-at-least-32-bytes", "same-password-1234", "same-password-1234"))
-                .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> config("same-key-and-password-with-32-bytes", "same-key-and-password-with-32-bytes", "admin-password-5678"))
-                .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> new ConfigSecurityConfiguration("test-config-key-with-at-least-32-bytes",
-                "same-user", "reader-password-1234", "same-user", "admin-password-5678"))
-                .isInstanceOf(IllegalArgumentException.class);
-        assertThatCode(() -> config("test-config-key-with-at-least-32-bytes", "reader-password-1234", "admin-password-5678"))
-                .doesNotThrowAnyException();
+    ConfigAccessProperties access(String user, String password, String adminPassword) {
+        return new ConfigAccessProperties("admin", adminPassword,
+                Map.of("gateway-service", new ConfigAccessProperties.Reader(user, password)),
+                Set.of("default", "docker"), Set.of("main"));
     }
 
-    ConfigSecurityConfiguration config(String key, String readerPassword, String adminPassword) {
-        return new ConfigSecurityConfiguration(key, "reader", readerPassword, "admin", adminPassword);
+    @Test void missingWeakReusedSecretsAndPlainHttpAreRejected() {
+        var valid = access("gateway", "reader-password-1234", "admin-password-5678");
+        assertThatThrownBy(() -> new ConfigSecurityConfiguration(null, true, valid)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> new ConfigSecurityConfiguration("short", true, valid)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> new ConfigSecurityConfiguration("test-key-with-at-least-32-utf8-bytes", false, valid))
+                .isInstanceOf(IllegalArgumentException.class);
+        for (var invalid : new ConfigAccessProperties[]{
+                access("gateway", "", "admin-password-5678"), access("gateway", "short", "admin-password-5678"),
+                access("gateway", "same-password-1234", "same-password-1234"),
+                access("admin", "reader-password-1234", "admin-password-5678"),
+                new ConfigAccessProperties("admin", "admin-password-5678", Map.of(), Set.of("default"), Set.of("main")),
+                new ConfigAccessProperties("admin", "admin-password-5678", Map.of(
+                        "gateway-service", new ConfigAccessProperties.Reader("same", "reader-password-1234"),
+                        "user-service", new ConfigAccessProperties.Reader("same", "user-password-1234")),
+                        Set.of("default"), Set.of("main"))}) {
+            assertThatThrownBy(() -> new ConfigSecurityConfiguration("test-key-with-at-least-32-utf8-bytes", true, invalid))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+        assertThatCode(() -> new ConfigSecurityConfiguration("test-key-with-at-least-32-utf8-bytes", true, valid))
+                .doesNotThrowAnyException();
     }
 }

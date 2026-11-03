@@ -1,6 +1,9 @@
 package com.hyeja.config.security;
 
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.HashSet;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -9,38 +12,55 @@ import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.User;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration(proxyBeanMethods = false)
+@EnableConfigurationProperties(ConfigAccessProperties.class)
 public class ConfigSecurityConfiguration {
     private final UserDetailsService accounts;
+    private final ConfigAccessProperties access;
 
     public ConfigSecurityConfiguration(@Value("${encrypt.key}") String encryptionKey,
-            @Value("${config-security.reader-username}") String reader,
-            @Value("${config-security.reader-password}") String readerPassword,
-            @Value("${config-security.admin-username}") String admin,
-            @Value("${config-security.admin-password}") String adminPassword) {
+            @Value("${server.ssl.enabled}") boolean tlsEnabled, ConfigAccessProperties access) {
+        if (!tlsEnabled) throw new IllegalArgumentException("Config Server requires HTTPS");
+        this.access = access;
         if (encryptionKey == null || encryptionKey.isBlank()
                 || encryptionKey.getBytes(StandardCharsets.UTF_8).length < 32
                 || encryptionKey.startsWith("{cipher}") || encryptionKey.contains("${")) {
             throw new IllegalArgumentException("CONFIG_ENCRYPT_KEY must contain at least 32 UTF-8 bytes");
         }
-        validateUsername(reader);
+        String admin = access.adminUsername();
+        String adminPassword = access.adminPassword();
         validateUsername(admin);
-        validatePassword(readerPassword);
         validatePassword(adminPassword);
-        if (reader.equals(admin) || readerPassword.equals(adminPassword)
-                || encryptionKey.equals(readerPassword) || encryptionKey.equals(adminPassword)) {
-            throw new IllegalArgumentException("Use separate Config accounts, passwords and encryption key");
-        }
+        if (access.readers() == null || access.readers().isEmpty()
+                || access.allowedProfiles() == null || access.allowedProfiles().isEmpty()
+                || access.allowedLabels() == null || access.allowedLabels().isEmpty())
+            throw new IllegalArgumentException("Config application accounts, profiles and labels are required");
         var encoder = PasswordEncoderFactories.createDelegatingPasswordEncoder();
-        accounts = new InMemoryUserDetailsManager(
-                User.withUsername(reader).password(encoder.encode(readerPassword)).roles("CONFIG_READER").build(),
-                User.withUsername(admin).password(encoder.encode(adminPassword))
-                        .roles("CONFIG_READER", "CONFIG_ADMIN").build());
+        var users = new ArrayList<UserDetails>();
+        var usernames = new HashSet<String>();
+        var passwords = new HashSet<String>();
+        usernames.add(admin);
+        passwords.add(encryptionKey);
+        if (!passwords.add(adminPassword)) throw new IllegalArgumentException("Use separate Config secrets");
+        users.add(User.withUsername(admin).password(encoder.encode(adminPassword)).roles("CONFIG_ADMIN").build());
+        access.readers().forEach((application, reader) -> {
+            if (!application.matches("[a-z][a-z0-9-]*") || application.equals("application")
+                    || application.equals("config-service") || reader == null)
+                throw new IllegalArgumentException("Invalid Config application scope");
+            validateUsername(reader.username());
+            validatePassword(reader.password());
+            if (!usernames.add(reader.username()) || !passwords.add(reader.password()))
+                throw new IllegalArgumentException("Each Config account requires a distinct username and password");
+            users.add(User.withUsername(reader.username()).password(encoder.encode(reader.password()))
+                    .authorities("ROLE_CONFIG_READER", "CONFIG_APP:" + application).build());
+        });
+        accounts = new InMemoryUserDetailsManager(users);
     }
 
     private static void validateUsername(String username) {
@@ -72,7 +92,7 @@ public class ConfigSecurityConfiguration {
                         .requestMatchers("/actuator/**").denyAll()
                         .requestMatchers("/encrypt", "/encrypt/**", "/decrypt", "/decrypt/**", "/key", "/key/**")
                             .hasRole("CONFIG_ADMIN")
-                        .requestMatchers(HttpMethod.GET, "/**").hasRole("CONFIG_READER")
+                        .requestMatchers(HttpMethod.GET, "/**").access(new ApplicationConfigAuthorizationManager(access))
                         .anyRequest().denyAll())
                 .build();
     }

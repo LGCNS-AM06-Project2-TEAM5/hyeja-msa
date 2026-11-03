@@ -2,8 +2,8 @@ name: hyeja
 
 x-app-environment: &app-environment
   SPRING_PROFILES_ACTIVE: docker
-  SPRING_CONFIG_IMPORT: configserver:http://config-service:8888
-  CONFIG_SERVER_URL: http://config-service:8888
+  SPRING_CONFIG_IMPORT: configserver:https://config-service:8888
+  CONFIG_SERVER_URL: https://config-service:8888
   EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-service:8761/eureka/
   EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
   MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,info
@@ -20,10 +20,19 @@ x-app-environment: &app-environment
   SPRING_KAFKA_TEMPLATE_OBSERVATION_ENABLED: "true"
   JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=60.0"
 
-x-business-environment: &business-environment
+x-config-client-environment: &config-client-environment
   <<: *app-environment
-  SPRING_CLOUD_CONFIG_USERNAME: ${CONFIG_READER_USERNAME:-config-reader}
-  SPRING_CLOUD_CONFIG_PASSWORD: ${CONFIG_READER_PASSWORD:?Set CONFIG_READER_PASSWORD (16+ characters)}
+  SPRING_CLOUD_CONFIG_URI: https://config-service:8888
+  SPRING_CLOUD_CONFIG_TLS_ENABLED: "true"
+  SPRING_CLOUD_CONFIG_TLS_TRUST_STORE: file:/run/config-trust/truststore.p12
+  SPRING_CLOUD_CONFIG_TLS_TRUST_STORE_TYPE: PKCS12
+  SPRING_CLOUD_CONFIG_TLS_TRUST_STORE_PASSWORD: ${CONFIG_TLS_TRUST_STORE_PASSWORD:?Set CONFIG_TLS_TRUST_STORE_PASSWORD}
+
+x-config-client-volumes: &config-client-volumes
+  - ./docker/config-tls/trust:/run/config-trust:ro
+
+x-business-environment: &business-environment
+  <<: *config-client-environment
   JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env (at least 32 UTF-8 bytes)}
 
 x-app: &app
@@ -162,10 +171,34 @@ services:
       SPRING_CLOUD_CONFIG_SERVER_GIT_URI: ${CONFIG_GIT_URI:-https://github.com/LGCNS-AM06-Project2-TEAM5/hyeja-config.git}
       SPRING_CLOUD_CONFIG_SERVER_GIT_DEFAULT_LABEL: ${CONFIG_GIT_LABEL:-main}
       CONFIG_ENCRYPT_KEY: ${CONFIG_ENCRYPT_KEY:?Set a separate CONFIG_ENCRYPT_KEY (32+ UTF-8 bytes)}
-      CONFIG_READER_USERNAME: ${CONFIG_READER_USERNAME:-config-reader}
-      CONFIG_READER_PASSWORD: ${CONFIG_READER_PASSWORD:?Set CONFIG_READER_PASSWORD (16+ characters)}
+      CONFIG_TLS_KEY_STORE: file:/run/config-server-tls/server.p12
+      CONFIG_TLS_KEY_STORE_PASSWORD: ${CONFIG_TLS_KEY_STORE_PASSWORD:?Set CONFIG_TLS_KEY_STORE_PASSWORD}
+      CONFIG_GATEWAY_USERNAME: ${CONFIG_GATEWAY_USERNAME:-config-gateway}
+      CONFIG_GATEWAY_PASSWORD: ${CONFIG_GATEWAY_PASSWORD:?Set CONFIG_GATEWAY_PASSWORD}
+      CONFIG_USER_USERNAME: ${CONFIG_USER_USERNAME:-config-user}
+      CONFIG_USER_PASSWORD: ${CONFIG_USER_PASSWORD:?Set CONFIG_USER_PASSWORD}
+      CONFIG_POLICY_USERNAME: ${CONFIG_POLICY_USERNAME:-config-policy}
+      CONFIG_POLICY_PASSWORD: ${CONFIG_POLICY_PASSWORD:?Set CONFIG_POLICY_PASSWORD}
+      CONFIG_ENGAGEMENT_USERNAME: ${CONFIG_ENGAGEMENT_USERNAME:-config-engagement}
+      CONFIG_ENGAGEMENT_PASSWORD: ${CONFIG_ENGAGEMENT_PASSWORD:?Set CONFIG_ENGAGEMENT_PASSWORD}
+      CONFIG_RECOMMENDATION_USERNAME: ${CONFIG_RECOMMENDATION_USERNAME:-config-recommendation}
+      CONFIG_RECOMMENDATION_PASSWORD: ${CONFIG_RECOMMENDATION_PASSWORD:?Set CONFIG_RECOMMENDATION_PASSWORD}
       CONFIG_ADMIN_USERNAME: ${CONFIG_ADMIN_USERNAME:-config-admin}
       CONFIG_ADMIN_PASSWORD: ${CONFIG_ADMIN_PASSWORD:?Set a separate CONFIG_ADMIN_PASSWORD (16+ characters)}
+      EUREKA_INSTANCE_PREFER_IP_ADDRESS: "false"
+      EUREKA_INSTANCE_HOSTNAME: config-service
+      EUREKA_INSTANCE_NON_SECURE_PORT_ENABLED: "false"
+      EUREKA_INSTANCE_SECURE_PORT_ENABLED: "true"
+      EUREKA_INSTANCE_SECURE_PORT: "8888"
+    volumes:
+      - ./docker/config-tls/server:/run/config-server-tls:ro
+      - ./docker/config-tls/trust/ca.crt:/run/config-ca/ca.crt:ro
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "--cacert", "/run/config-ca/ca.crt", "https://localhost:8888/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      start_period: 90s
+      retries: 12
     ports:
       - "127.0.0.1:${CONFIG_HOST_PORT:-8888}:8888"
     depends_on:
@@ -178,12 +211,14 @@ services:
       context: .
       dockerfile: infra/gateway-service/Dockerfile
     environment:
-      <<: *app-environment
-      SPRING_CLOUD_CONFIG_USERNAME: ${CONFIG_READER_USERNAME:-config-reader}
-      SPRING_CLOUD_CONFIG_PASSWORD: ${CONFIG_READER_PASSWORD:?Set CONFIG_READER_PASSWORD (16+ characters)}
+      <<: *config-client-environment
+      SPRING_CLOUD_CONFIG_NAME: gateway-service
+      SPRING_CLOUD_CONFIG_USERNAME: ${CONFIG_GATEWAY_USERNAME:-config-gateway}
+      SPRING_CLOUD_CONFIG_PASSWORD: ${CONFIG_GATEWAY_PASSWORD:?Set CONFIG_GATEWAY_PASSWORD}
       SERVER_PORT: "8000"
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env (at least 32 UTF-8 bytes)}
       GATEWAY_ENGAGEMENT_SECRET: ${GATEWAY_ENGAGEMENT_SECRET:?Set a separate internal JWT key (at least 32 UTF-8 bytes)}
+    volumes: *config-client-volumes
     ports:
       - "127.0.0.1:${GATEWAY_HOST_PORT:-8000}:8000"
     depends_on:
@@ -199,6 +234,9 @@ services:
       dockerfile: services/user-service/Dockerfile
     environment:
       <<: *business-environment
+      SPRING_CLOUD_CONFIG_NAME: user-service
+      SPRING_CLOUD_CONFIG_USERNAME: ${CONFIG_USER_USERNAME:-config-user}
+      SPRING_CLOUD_CONFIG_PASSWORD: ${CONFIG_USER_PASSWORD:?Set CONFIG_USER_PASSWORD}
       SERVER_PORT: "8081"
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
       DB_HOST: mariadb
@@ -223,6 +261,7 @@ services:
       MANAGEMENT_HEALTH_MAIL_ENABLED: "false"
       MAIL_USERNAME: ${MAIL_USERNAME:-}
       MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+    volumes: *config-client-volumes
     depends_on: *business-dependencies
 
   policy-service:
@@ -232,6 +271,9 @@ services:
       dockerfile: services/policy-service/Dockerfile
     environment:
       <<: *business-environment
+      SPRING_CLOUD_CONFIG_NAME: policy-service
+      SPRING_CLOUD_CONFIG_USERNAME: ${CONFIG_POLICY_USERNAME:-config-policy}
+      SPRING_CLOUD_CONFIG_PASSWORD: ${CONFIG_POLICY_PASSWORD:?Set CONFIG_POLICY_PASSWORD}
       SERVER_PORT: "8082"
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
       DB_HOST: mariadb
@@ -245,6 +287,7 @@ services:
       OPEN_AI_KEY: ${OPEN_AI_KEY:-}
       OPEN_AI_MODEL: ${OPEN_AI_MODEL:-gpt-4o-mini}
       YOUTH_API_KEY: ${YOUTH_API_KEY:-}
+    volumes: *config-client-volumes
     depends_on: *business-dependencies
 
   engagement-service:
@@ -254,6 +297,9 @@ services:
       dockerfile: services/engagement-service/Dockerfile
     environment:
       <<: *business-environment
+      SPRING_CLOUD_CONFIG_NAME: engagement-service
+      SPRING_CLOUD_CONFIG_USERNAME: ${CONFIG_ENGAGEMENT_USERNAME:-config-engagement}
+      SPRING_CLOUD_CONFIG_PASSWORD: ${CONFIG_ENGAGEMENT_PASSWORD:?Set CONFIG_ENGAGEMENT_PASSWORD}
       SERVER_PORT: "8083"
       GATEWAY_ENGAGEMENT_SECRET: ${GATEWAY_ENGAGEMENT_SECRET:?Set a separate internal JWT key (at least 32 UTF-8 bytes)}
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
@@ -267,6 +313,7 @@ services:
       SPRING_DATASOURCE_PASSWORD: ${ENGAGEMENT_DB_PASSWORD:?Set ENGAGEMENT_DB_PASSWORD in .env}
       MAIL_USERNAME: ${MAIL_USERNAME:-}
       MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+    volumes: *config-client-volumes
     depends_on: *business-dependencies
 
   recommendation-service:
@@ -276,9 +323,13 @@ services:
       dockerfile: services/recommendation-service/Dockerfile
     environment:
       <<: *business-environment
+      SPRING_CLOUD_CONFIG_NAME: recommendation-service
+      SPRING_CLOUD_CONFIG_USERNAME: ${CONFIG_RECOMMENDATION_USERNAME:-config-recommendation}
+      SPRING_CLOUD_CONFIG_PASSWORD: ${CONFIG_RECOMMENDATION_PASSWORD:?Set CONFIG_RECOMMENDATION_PASSWORD}
       SERVER_PORT: "8084"
       OPEN_AI_KEY: ${OPEN_AI_KEY:-}
       OPEN_AI_MODEL: ${OPEN_AI_MODEL:-gpt-4o-mini}
+    volumes: *config-client-volumes
     depends_on: *business-dependencies
 
 volumes:

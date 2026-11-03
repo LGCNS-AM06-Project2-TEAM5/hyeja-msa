@@ -18,12 +18,12 @@ Compose v2 이상, 이미지/Gradle 의존성/GitHub 접근이 가능한 네트�
 | `ENGAGEMENT_DB_PASSWORD` | engagement_app / engagement_db |
 | `JWT_SECRET` | User와 Gateway가 공유하는 최소 32바이트 UTF-8 키 |
 | `CONFIG_ENCRYPT_KEY` | Config Server 전용 암호화 마스터 키. JWT 키와 다른 무작위 값, 최소 32 UTF-8 바이트 |
-| `CONFIG_READER_PASSWORD` | Config 조회 계정 비밀번호, 16자 이상·72 UTF-8 바이트 이하 |
+| `CONFIG_GATEWAY_PASSWORD` 등 5개 서비스 비밀번호 | 서비스별 Config 조회 계정. 각 값은 서로 다르게 16자 이상·72 UTF-8 바이트 이하 |
 | `CONFIG_ADMIN_PASSWORD` | 암·복호화 관리자 비밀번호. 읽기 비밀번호와 다른 값, 16자 이상·72 UTF-8 바이트 이하 |
 | `GATEWAY_ENGAGEMENT_SECRET` | Gateway·engagement 전용 내부 JWT 키. JWT_SECRET과 다른 무작위 값, 최소 32 UTF-8 바이트 |
 
 비밀번호는 서로 다르게 설정합니다. 실제 비밀값은 커밋하지 않습니다.
-Config Server는 health 외 경로에 Basic 인증이 필요합니다. Compose는 읽기 자격증명을 클라이언트에 전달하고, 마스터 키와 관리자 비밀번호는 Config Server에만 전달합니다. 암호화·복호화와 설정 이관 방법은 [Config Server 문서](../infra/config-service/README.md)를 참고하세요. 클라이언트 초기 접속 비밀번호는 Config Git이 아닌 환경변수로 관리합니다.
+Config Server는 HTTPS만 제공하고 서비스별 Basic 계정으로 자기 JSON 설정만 조회할 수 있습니다. 먼저 `docker/New-ConfigTls.ps1`로 개발 인증서를 생성하고 .env에 CONFIG_TLS_KEY_STORE_PASSWORD/CONFIG_TLS_TRUST_STORE_PASSWORD를 설정합니다. 인증서 검증은 끄지 않습니다. Compose는 서비스별 읽기 자격증명과 공개 CA truststore만 각 클라이언트에 전달하고, 마스터 키와 관리자 비밀번호·서버 개인키는 Config Server에만 전달합니다. 암호화·복호화와 설정 이관 방법은 [Config Server 문서](../infra/config-service/README.md)를 참고하세요. 클라이언트 초기 접속 비밀번호는 Config Git이 아닌 환경변수로 관리합니다.
 Compose는 필요한 변수만 서비스에 명시적으로 전달합니다. 전체 `.env`를 주입하지 않아
 기존 `SERVER_PORT=8080`, `DB_NAME=hyeja`, `DB_USERNAME=root`, `REDIS_HOST=localhost`가
 컨테이너 설정을 덮어쓰지 않습니다. 관리자 계정은 주입하지 않습니다.
@@ -62,7 +62,7 @@ powershell -File docker/Test-Compose.ps1 -InfrastructureOnly
 | Kafka | localhost:19092 | kafka:9092 |
 | Zipkin | http://localhost:9411 | http://zipkin:9411 |
 | Discovery | http://localhost:8761 | http://discovery-service:8761 |
-| Config | http://localhost:8888 | http://config-service:8888 |
+| Config | https://localhost:8888 | https://config-service:8888 |
 | Gateway | http://localhost:8000 | http://gateway-service:8000 |
 
 호스트 포트는 `.env`에서 변경할 수 있습니다. 비즈니스 서비스의 8081~8084는

@@ -1,5 +1,11 @@
 server:
   port: 8888
+  ssl:
+    enabled: true
+    enabled-protocols: TLSv1.2,TLSv1.3
+    key-store: ${CONFIG_TLS_KEY_STORE}
+    key-store-type: PKCS12
+    key-store-password: ${CONFIG_TLS_KEY_STORE_PASSWORD}
 
 spring:
   application:
@@ -20,8 +26,24 @@ encrypt:
   key: ${CONFIG_ENCRYPT_KEY}
 
 config-security:
-  reader-username: ${CONFIG_READER_USERNAME:config-reader}
-  reader-password: ${CONFIG_READER_PASSWORD}
+  allowed-profiles: default,local,dev,docker
+  allowed-labels: main
+  readers:
+    gateway-service:
+      username: ${CONFIG_GATEWAY_USERNAME:config-gateway}
+      password: ${CONFIG_GATEWAY_PASSWORD}
+    user-service:
+      username: ${CONFIG_USER_USERNAME:config-user}
+      password: ${CONFIG_USER_PASSWORD}
+    policy-service:
+      username: ${CONFIG_POLICY_USERNAME:config-policy}
+      password: ${CONFIG_POLICY_PASSWORD}
+    engagement-service:
+      username: ${CONFIG_ENGAGEMENT_USERNAME:config-engagement}
+      password: ${CONFIG_ENGAGEMENT_PASSWORD}
+    recommendation-service:
+      username: ${CONFIG_RECOMMENDATION_USERNAME:config-recommendation}
+      password: ${CONFIG_RECOMMENDATION_PASSWORD}
   admin-username: ${CONFIG_ADMIN_USERNAME:config-admin}
   admin-password: ${CONFIG_ADMIN_PASSWORD}
 

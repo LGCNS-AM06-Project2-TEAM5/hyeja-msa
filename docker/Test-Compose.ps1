@@ -82,7 +82,7 @@ try {
     if ($LASTEXITCODE -ne 0 -or -not $configReader) { throw 'Config reader username unavailable' }
     $configPassword = (& docker compose exec -T gateway-service printenv SPRING_CLOUD_CONFIG_PASSWORD) -join ''
     if ($LASTEXITCODE -ne 0 -or -not $configPassword) { throw 'Config reader password unavailable' }
-    $config = & docker compose exec -T gateway-service curl --fail --silent --user ($configReader + ':' + $configPassword) http://config-service:8888/user-service/default
+    $config = & docker compose exec -T gateway-service curl --fail --silent --cacert /run/config-trust/ca.crt --user ($configReader + ':' + $configPassword) https://config-service:8888/gateway-service/default
     $configExitCode = $LASTEXITCODE
     Remove-Variable configPassword
     if ($configExitCode -ne 0 -or -not (($config -join '') | ConvertFrom-Json).propertySources) { throw 'Config Git lookup failed' }
