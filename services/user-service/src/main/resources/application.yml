@@ -29,3 +29,9 @@ server:
 # Gateway와 같은 환경변수를 사용합니다. 실제 키는 저장소에 커밋하지 않습니다.
 jwt:
   secret: ${JWT_SECRET}
+
+# 서비스 간 호출(/internal/**) 공유 비밀값. Config Server 공통 설정이 우선하고, 로컬은 환경변수로 넣습니다.
+# 비어 있으면 서버는 뜨지만 내부 API는 모두 401입니다.
+hyeja:
+  internal:
+    token: ${INTERNAL_TOKEN:}

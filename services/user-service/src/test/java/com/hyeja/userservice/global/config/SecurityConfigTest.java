@@ -17,6 +17,8 @@ import org.springframework.test.web.servlet.MockMvc;
 @ActiveProfiles("test")
 class SecurityConfigTest {
 
+    private static final String INTERNAL_TOKEN = "hyeja-test-only-internal-token-0123456789";
+
     @Autowired
     private MockMvc mvc;
 
@@ -36,9 +38,23 @@ class SecurityConfigTest {
     }
 
     @Test
-    void internalProfileIsReachableWithoutToken() throws Exception {
-        // 서비스 간 호출에는 사용자 JWT가 없으므로 401이 아니라 실제 처리 결과(없는 회원 404)가 나와야 합니다.
+    void internalProfileRejectsMissingToken() throws Exception {
         mvc.perform(get("/internal/members/999/profile"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("COMMON_002"));
+    }
+
+    @Test
+    void internalProfileRejectsWrongToken() throws Exception {
+        mvc.perform(get("/internal/members/999/profile").header("X-Internal-Token", "wrong-token"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("COMMON_002"));
+    }
+
+    @Test
+    void internalProfileAcceptsValidToken() throws Exception {
+        // 인증을 통과하면 실제 처리 결과(없는 회원 404)가 나와야 합니다.
+        mvc.perform(get("/internal/members/999/profile").header("X-Internal-Token", INTERNAL_TOKEN))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("MEMBER_001"));
     }

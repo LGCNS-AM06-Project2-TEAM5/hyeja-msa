@@ -29,3 +29,7 @@ eureka:
 
 jwt:
   secret: hyeja-test-only-jwt-secret-key-0123456789
+
+hyeja:
+  internal:
+    token: hyeja-test-only-internal-token-0123456789

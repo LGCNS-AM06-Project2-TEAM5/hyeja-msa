@@ -76,7 +76,7 @@ Gateway 라우팅과 인증 규칙은 [infra/gateway-service](../../infra/gatewa
 | 400 | `COMMON_001` | `memberId` 형식 오류 |
 | 500 | `SERVER_001` | 내부 처리 오류 |
 
-인증: user-service `SecurityConfig`에서 `/internal/**`을 JWT 없이 허용합니다. Gateway가 라우팅하지 않아 외부에는 노출되지 않습니다. 서비스 간 인증 수단은 인프라 담당자와 정한 뒤 추가합니다.
+인증: 호출하는 쪽은 `X-Internal-Token` 헤더에 공유 비밀값(`hyeja.internal.token`)을 넣습니다. 헤더가 없거나 값이 다르면 401 `COMMON_002`입니다. 사용자 JWT는 필요 없고, Gateway는 `/internal/**`을 라우팅하지 않습니다.
 
 ## 3. Kafka 이벤트
 

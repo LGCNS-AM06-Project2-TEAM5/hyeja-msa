@@ -1,12 +1,14 @@
 package com.hyeja.userservice.global.config;
 
 import com.hyeja.userservice.global.apiPayload.status.ErrorStatus;
+import com.hyeja.userservice.global.security.InternalTokenFilter;
 import com.hyeja.userservice.global.security.JwtAuthenticationFilter;
 import com.hyeja.userservice.global.security.JwtProvider;
 import com.hyeja.userservice.global.security.TokenBlacklist;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -24,7 +26,10 @@ public class SecurityConfig {
     private final TokenBlacklist tokenBlacklist;
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(
+            HttpSecurity http,
+            @Value("${hyeja.internal.token:}") String internalToken
+    ) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
                 .formLogin(form -> form.disable())
@@ -43,8 +48,8 @@ public class SecurityConfig {
                                 "/actuator/health",
                                 "/actuator/health/**").permitAll()
                         .requestMatchers("/h2-console/**", "/error").permitAll()
-                        // 서비스 간 호출(Feign) 전용. Gateway가 라우팅하지 않아 외부에 노출되지 않습니다.
-                        .requestMatchers("/internal/**").permitAll()
+                        // 서비스 간 호출(Feign) 전용. Gateway가 라우팅하지 않고, X-Internal-Token 헤더가 맞아야 합니다.
+                        .requestMatchers("/internal/**").hasRole("INTERNAL")
                         .anyRequest().authenticated())
                 .exceptionHandling(exception -> exception
                         .authenticationEntryPoint((request, response, error) ->
@@ -54,7 +59,8 @@ public class SecurityConfig {
                 .addFilterBefore(
                         new JwtAuthenticationFilter(jwtProvider, tokenBlacklist),
                         UsernamePasswordAuthenticationFilter.class
-                );
+                )
+                .addFilterAfter(new InternalTokenFilter(internalToken), JwtAuthenticationFilter.class);
         return http.build();
     }
 
