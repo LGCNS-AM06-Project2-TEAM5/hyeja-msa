@@ -4,8 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
 import com.hyeja.engagementservice.policy.event.PolicyEventKafkaConfig;
+import com.hyeja.engagementservice.policy.event.PolicyEventMetrics;
 import com.hyeja.engagementservice.policy.event.ProcessedPolicyEventRepository;
 import com.hyeja.engagementservice.policy.repository.PolicyRepository;
+import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Duration;
 import java.util.Map;
 import org.apache.kafka.clients.consumer.Consumer;
@@ -34,6 +36,7 @@ class PolicyUpdatedKafkaIntegrationTest {
     @Autowired EmbeddedKafkaBroker broker;
     @Autowired PolicyRepository policies;
     @Autowired ProcessedPolicyEventRepository processed;
+    @Autowired MeterRegistry meterRegistry;
 
     @AfterEach void cleanUp() {
         processed.deleteAll();
@@ -41,6 +44,8 @@ class PolicyUpdatedKafkaIntegrationTest {
     }
 
     @Test void 이벤트를_받으면_스냅샷에_반영하고_같은_eventId는_한_번만_반영한다() {
+        double appliedBefore = count(PolicyEventMetrics.EVENTS, "result", "applied");
+        double duplicateBefore = count(PolicyEventMetrics.EVENTS, "result", "duplicate");
         KafkaTemplate<String, String> producer = producer();
         producer.send(PolicyEventKafkaConfig.TOPIC, "K1", event("e-1", "K1", "청년 월세"));
         producer.send(PolicyEventKafkaConfig.TOPIC, "K1", event("e-1", "K1", "다시 온 같은 이벤트"));
@@ -50,9 +55,14 @@ class PolicyUpdatedKafkaIntegrationTest {
         await().atMost(Duration.ofSeconds(20)).until(() -> policies.existsById("K2"));
         assertThat(policies.findById("K1").orElseThrow().getPolicyName()).isEqualTo("청년 월세");
         assertThat(processed.count()).isEqualTo(2);
+        await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
+            assertThat(count(PolicyEventMetrics.EVENTS, "result", "applied") - appliedBefore).isEqualTo(2);
+            assertThat(count(PolicyEventMetrics.EVENTS, "result", "duplicate") - duplicateBefore).isEqualTo(1);
+        });
     }
 
     @Test void JSON이_깨진_메시지는_재시도_없이_DLT로_보낸다() {
+        double dltBefore = count(PolicyEventMetrics.DLT, null, null);
         producer().send(PolicyEventKafkaConfig.TOPIC, "BAD", "{not-json");
 
         try (Consumer<String, String> consumer = consumer()) {
@@ -62,6 +72,18 @@ class PolicyUpdatedKafkaIntegrationTest {
             assertThat(record.value()).isEqualTo("{not-json");
         }
         assertThat(processed.count()).isZero();
+        await().atMost(Duration.ofSeconds(5)).untilAsserted(() ->
+                assertThat(count(PolicyEventMetrics.DLT, null, null) - dltBefore).isEqualTo(1));
+    }
+
+    // 대시보드가 Prometheus에서 읽는 값과 같은 카운터입니다. 아직 한 번도 안 올랐으면 0으로 봅니다.
+    private double count(String name, String tagKey, String tagValue) {
+        var search = meterRegistry.find(name);
+        if (tagKey != null) {
+            search = search.tag(tagKey, tagValue);
+        }
+        var counter = search.counter();
+        return counter == null ? 0 : counter.count();
     }
 
     private KafkaTemplate<String, String> producer() {
