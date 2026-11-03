@@ -10,7 +10,7 @@
 | 서비스 | 경로 |
 |---|---|
 | user | `POST /api/members`, `POST /api/members/email-verifications`, `POST /api/members/email-verifications/confirmation`, `POST /api/members/login`, `POST /api/members/logout`, `GET /api/members/me`, `GET /api/members/find-email`, `PATCH /api/members/me/delete`, `GET·PATCH /api/members/me/profile` |
-| policy | `GET /api/policies/housing`, `GET /api/policies/housing/me`, `GET /api/policies/{policyId}`, `POST /api/policies/sync`, `GET /api/policies/card-news/guest`, `GET /api/policies/card-news`, `GET /api/policies/card-detail/{policyId}`, `GET /api/regions`, `GET /api/terms`, `GET /api/terms/{termId}` |
+| policy | `GET /api/policies/housing`, `GET /api/policies/housing/me`, `GET /api/policies/{policyId}`, `POST /api/policies/sync`, `GET /api/policies/admin/events`, `GET /api/policies/card-news/guest`, `GET /api/policies/card-news`, `GET /api/policies/card-detail/{policyId}`, `GET /api/regions`, `GET /api/terms`, `GET /api/terms/{termId}` |
 | recommendation | `GET /api/policies/search` |
 | engagement | `GET /api/favorite`, `POST·DELETE /api/favorite/{policyId}`, `GET /api/notification`, `PATCH /api/notification/{notificationId}/read`, `DELETE /api/notification/{notificationId}` |
 | 공통 | `GET /api/health` (각 서비스) |
