@@ -31,7 +31,7 @@
 |---|---|---|
 | 제공 → recommendation | Feign | 정책 후보 일괄 조회 (판정에 필요한 나이·소득·혼인·취업·무주택 조건과 신청 지역 포함) |
 | 제공 → engagement | Feign | 정책 존재·스냅샷 확인 (관심 등록 시) |
-| 사용 → user | Feign | 내 조건 조회 — `/housing/me` 필터, 상세의 판정, 회원 카드뉴스 (설계서에 없던 호출, **추가 필요**) |
+| 사용 → user | Feign | 내 조건 조회 — `/housing/me` 필터, 상세의 판정, 회원 카드뉴스 (F6, `UserClient`·`MemberProfileReader`) |
 | 사용 → engagement | Feign | 관심 여부 일괄 조회 (목록·상세·카드뉴스의 하트) |
 | 발행 | Kafka `policy-updated` | 수집·변경 후 정책 스냅샷 (engagement 읽기 모델 갱신) |
 
@@ -152,7 +152,7 @@ PR #37의 공통 회원 헤더 리졸버는 현재 브랜치에 없어 직접 �
 - 지역은 페이지의 정책 ID로 한 번에 조회합니다. 응답의 snake_case 필드, 지역 목록·전국 여부·지역 요약, 한국 날짜 기준 d_day와 페이지 메타데이터는 원본과 동일합니다.
 - `GET /api/policies/{policyId}`: 원본 정책 상세 필드와 추가 자격 문구에 포함된 용어를 반환합니다. 없는 정책은 404 POLICY_001입니다. 상세는 원본의 ID 조회 동작을 유지하며 목록 필터를 추가 적용하지 않습니다.
 - 비회원 상세는 isFavorite=false, overallStatus=null, conditions=[]입니다. 회원 ID가 있으면 `PolicyMemberService.getMemberDetail(policy, memberId)` 결과를 응답에 옮깁니다.
-- `PolicyMemberService`, `PolicyMemberDetailDTO`는 미머지 PR #40의 ad09a109 기준 코드를 동일하게 가져온 연결 지점입니다. 현재 빈 구현이므로 로그인 상세도 기본값을 반환하며, 실제 프로필·관심 여부·판정 구현 완료를 뜻하지 않습니다. #40 머지 시 두 파일의 동일성과 최종 연결을 확인합니다.
+- `PolicyMemberService`는 로그인 상세에서 user(F6) 회원 조건으로 1차 판정을 채웁니다. user가 응답하지 않으면 비회원 상세와 같은 값이고, 하트는 F4 연결 전까지 false입니다.
 - 현재 브랜치에는 #37의 공통 회원 헤더 리졸버가 없어 Gateway의 X-Member-Id를 직접 읽습니다. 잘못된 ID 또는 회원 ID 없이 Authorization만 전달된 상세 요청은 401로 거부하며 JWT를 직접 해석하지 않습니다.
 - 원본 목록 DTO의 Swagger 설명용 어노테이션은 현재 서비스에 Swagger 의존성이 없어 제외했으며 JSON 매핑은 유지했습니다. 지역 요약은 원본 summarize 규칙만 목록 Converter에 옮겼습니다.
 
