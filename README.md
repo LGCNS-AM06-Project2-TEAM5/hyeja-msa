@@ -1,6 +1,16 @@
-# 혜자 MSA (hyeja-msa)
+<div align="center">
 
-청년 주거 정책 추천 서비스 「혜자」를 마이크로서비스 아키텍처로 전환한 LG CNS AM INSPIRE CAMP 6기 미니프로젝트 2 · 5조 저장소입니다.
+<img src="docs/architecture/hyeja-logo.svg" alt="혜자 로고" width="220">
+
+# 혜자 MSA
+
+청년 주거 정책 추천 서비스 「혜자」를 마이크로서비스 4개로 나누고 연결해 AWS EC2에 배포했습니다.
+
+LG CNS AM INSPIRE CAMP 6기 미니프로젝트 2 · 5조
+
+![Java](https://img.shields.io/badge/Java_17-007396?style=flat-square&logo=openjdk&logoColor=white) ![Spring Boot](https://img.shields.io/badge/Spring_Boot_4.1.1-6DB33F?style=flat-square&logo=springboot&logoColor=white) ![Spring Cloud](https://img.shields.io/badge/Spring_Cloud_2025.1.4-6DB33F?style=flat-square&logo=spring&logoColor=white) ![Kafka](https://img.shields.io/badge/Kafka_3.9-231F20?style=flat-square&logo=apachekafka&logoColor=white) ![MariaDB](https://img.shields.io/badge/MariaDB_11.4-003545?style=flat-square&logo=mariadb&logoColor=white) ![Redis](https://img.shields.io/badge/Redis_7.4-DC382D?style=flat-square&logo=redis&logoColor=white) ![Docker](https://img.shields.io/badge/Docker_Compose-2496ED?style=flat-square&logo=docker&logoColor=white) ![Prometheus](https://img.shields.io/badge/Prometheus-E6522C?style=flat-square&logo=prometheus&logoColor=white) ![Grafana](https://img.shields.io/badge/Grafana-F46800?style=flat-square&logo=grafana&logoColor=white) ![AWS EC2](https://img.shields.io/badge/AWS_EC2-FF9900?style=flat-square&logo=amazonec2&logoColor=white) ![React](https://img.shields.io/badge/React_19-61DAFB?style=flat-square&logo=react&logoColor=black)
+
+</div>
 
 - 혜자 코드: [hyeja-backend](https://github.com/LGCNS-AM06-Project2-TEAM5/hyeja-backend) (1차 백엔드, 서비스 분리의 출발점) · [hyeja-frontend](https://github.com/LGCNS-AM06-Project2-TEAM5/hyeja-frontend) (프런트엔드, 관리자 운영 화면 포함)
 - 설정 저장소(Config Server용): [hyeja-config](https://github.com/LGCNS-AM06-Project2-TEAM5/hyeja-config)
@@ -10,7 +20,9 @@
 
 ## 아키텍처
 
-![시스템 구성도](docs/architecture/system-diagram.webp)
+![혜자 MSA 구성도](docs/architecture/msa-architecture.png)
+
+실제 코드 기준 구성도입니다. 처음 설계 때 그린 시스템·서비스 구성도는 [docs/architecture](docs/architecture/README.md)에 있습니다.
 
 - 서비스 4개: User, Policy, Engagement, Recommendation. AI는 별도 서비스로 두지 않고 정책 분석·카드뉴스는 Policy, 검색 의도 분석·판정 설명은 Recommendation에 둡니다.
 - DB 3개: `user_db`, `policy_db`, `engagement_db`. Recommendation은 DB 없이 다른 서비스를 Feign으로 조회합니다.
