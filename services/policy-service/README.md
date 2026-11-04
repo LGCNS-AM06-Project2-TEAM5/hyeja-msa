@@ -62,6 +62,8 @@
 
 시간 제한은 `application.yml`의 `spring.cloud.openfeign.client.config.default`(연결 1초, 응답 2초)입니다. 서비스 주소는 Eureka에서 찾습니다.
 
+Circuit Breaker (Issue #103): F4는 `policyEngagementFavorites`, F6는 `policyUserProfile` 독립 회로(Resilience4j, `application.yml`의 `resilience4j.circuitbreaker`)를 거칩니다. 최근 20회 중 10회 이상 기록되고 절반 이상 실패(5xx·연결 실패·Timeout·역직렬화 실패)하면 15초 동안 호출하지 않고, 이후 3회 시험 호출로 닫거나 다시 엽니다. 4xx(`MEMBER_001`·`PROFILE_001` 포함)는 실패율에서 뺍니다. 회로가 열려 호출하지 않을 때도 F6는 503 `SERVER_002`(부르는 쪽의 기존 대체 응답 그대로), F4는 하트 없이 응답합니다. Retry는 두지 않습니다. 상태·호출 결과는 `/actuator/prometheus`의 `resilience4j_circuitbreaker_*` 메트릭과 상태 전환 WARN 로그로 확인합니다.
+
 ## 로컬 개발 실행
 
 - `application.yml`: 서비스 이름, Config Server 연결, 랜덤 포트 등 공통 설정.
@@ -141,9 +143,12 @@ Policy Controller에서도 양의 회원 ID와 ADMIN 역할을 확인합니다. 
 헤더는 Gateway를 신뢰하는 내부 계약이므로 Policy 포트를 외부에 직접 노출하지 않는 배포 구성이 전제입니다.
 PR #37의 공통 회원 헤더 리졸버는 현재 브랜치에 없어 직접 헤더를 읽으며, 반영 후 공통화할 수 있습니다.
 
-카드뉴스 Entity·Repository는 현재 팀원 구현을 사용합니다. `policy-updated` 발행은 아직 연결하지 않았으며
-이벤트 담당자가 `PolicySyncItemService.save`의 저장 트랜잭션과 발행 경계를 맞춰야 합니다.
-현재 코드가 Kafka 동기화까지 보장하는 것은 아닙니다.
+정책·지역·누락 카드뉴스를 모두 저장한 뒤, 같은 항목 트랜잭션 안에서
+`PolicyChangedPublisher.publish(List.of(policy.getPolicyId()))`를 호출합니다.
+발행기가 예외를 던지면 해당 항목의 저장은 롤백되고, 앞서 성공한 항목은 유지하며 다음 항목을 처리합니다.
+재수집도 저장에 성공할 때마다 발행기를 호출합니다.
+현재 브랜치의 발행기는 `NoOpPolicyChangedPublisher`이므로 Kafka에는 전송하지 않습니다.
+Outbox 구현(#82)·Relay(#83)과 통합한 뒤 실제 Kafka 전송은 별도로 검증해야 합니다.
 
 자동 테스트는 외부 API·AI를 대체하며, H2에서 재수집·카드 중복 방지·항목 롤백·앞선 커밋 유지까지 확인합니다.
 실제 온통청년·OpenAI 대량 호출, MariaDB 쓰기, Gateway 경유 통합 실행은 별도 검증입니다.

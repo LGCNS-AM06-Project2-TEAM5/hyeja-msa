@@ -36,4 +36,9 @@ public abstract class BaseEntity {
     public boolean isDeleted() {
         return deletedAt != null;
     }
+
+    // F5에서 원본이 삭제되지 않았음을 확인한 경우 로컬 읽기 모델의 삭제 표시를 해제합니다.
+    public void restore() {
+        deletedAt = null;
+    }
 }

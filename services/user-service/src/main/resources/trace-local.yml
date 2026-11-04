@@ -1,0 +1,64 @@
+# Standalone configuration: select with --spring.config.location=classpath:trace-local.yml.
+server:
+  address: 127.0.0.1
+  port: 8081
+
+spring:
+  application:
+    name: user-service
+  cloud:
+    config:
+      enabled: false
+    bus:
+      enabled: false
+    discovery:
+      enabled: false
+  data:
+    redis:
+      host: localhost
+      port: ${REDIS_HOST_PORT:16379}
+  datasource:
+    driver-class-name: org.h2.Driver
+    url: jdbc:h2:file:./data/trace_local_user;MODE=MariaDB;DATABASE_TO_LOWER=TRUE
+    username: sa
+    password: ""
+  jpa:
+    hibernate:
+      ddl-auto: update
+  mail:
+    host: localhost
+    username: ""
+
+eureka:
+  client:
+    enabled: false
+
+jwt:
+  secret: ${JWT_SECRET}
+hyeja:
+  mail:
+    log-verification-code: true
+
+logging:
+  include-application-name: false
+  pattern:
+    correlation: '[${spring.application.name:},%X{traceId:-},%X{spanId:-}] '
+  level:
+    root: INFO
+  file:
+    name: ./logs/${spring.application.name}.log
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  health:
+    mail:
+      enabled: false
+  tracing:
+    sampling:
+      probability: 1.0
+    export:
+      zipkin:
+        endpoint: ${ZIPKIN_ENDPOINT:http://localhost:9411/api/v2/spans}

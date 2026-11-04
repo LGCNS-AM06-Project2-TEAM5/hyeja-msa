@@ -19,6 +19,7 @@ public enum ErrorStatus implements BaseErrorCode {
     UNSUPPORTED_MEDIA_TYPE(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "COMMON_008", "지원하지 않는 요청 형식입니다."),
     NOT_ACCEPTABLE(HttpStatus.NOT_ACCEPTABLE, "COMMON_009", "요청한 응답 형식을 제공할 수 없습니다."),
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "SERVER_001", "서버 오류가 발생했습니다."),
+    POLICY_SERVICE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "SERVER_002", "정책 서비스에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요."),
 
     // 회원
     MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "MEMBER_001", "존재하지 않는 회원입니다."),

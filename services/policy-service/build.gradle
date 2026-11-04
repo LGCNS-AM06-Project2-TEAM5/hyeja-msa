@@ -23,6 +23,12 @@ ext {
 }
 
 dependencies {
+    testImplementation 'org.springframework.boot:spring-boot-micrometer-tracing-test'
+    testImplementation 'org.springframework.boot:spring-boot-micrometer-metrics-test'
+    testImplementation 'org.springframework.security:spring-security-test'
+    runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
+    implementation 'io.github.openfeign:feign-micrometer'
+    implementation 'org.springframework.boot:spring-boot-starter-security'
     implementation 'org.springframework.cloud:spring-cloud-starter-bus-kafka'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'org.springframework.boot:spring-boot-starter-zipkin'
@@ -32,6 +38,9 @@ dependencies {
     implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
     // user(F6)·engagement(F4) 내부 API 호출
     implementation 'org.springframework.cloud:spring-cloud-starter-openfeign'
+    // F4·F6 Feign 호출의 Circuit Breaker와 Prometheus 메트릭
+    implementation 'org.springframework.cloud:spring-cloud-starter-circuitbreaker-resilience4j'
+    implementation 'io.github.resilience4j:resilience4j-micrometer'
     // policy-updated 발행(policy_outbox → Kafka)
     implementation 'org.springframework.boot:spring-boot-starter-kafka'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'

@@ -6,20 +6,26 @@ import com.hyeja.recommendationservice.profile.dto.EligibilityProfileDTO;
 import com.hyeja.recommendationservice.profile.dto.MemberProfileDTO;
 import com.hyeja.recommendationservice.profile.dto.SearchProfileDTO;
 import com.hyeja.recommendationservice.region.dto.RegionDTO;
+import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 // F1 Adapter: 검색 코어의 ProfileClient 호출을 user-service 회원 조건 API로 보내고 응답을 SearchProfileDTO로 바꿉니다.
 // 404 MEMBER_001·PROFILE_001은 UserServiceErrorDecoder가 같은 코드의 GeneralException으로 바꾸고,
 // 그 밖의 HTTP 오류·연결 실패·Timeout·역직렬화 실패는 FeignException 그대로 전파해 검색 실패(SERVER_001)가 되게 합니다.
+// 회로가 열려 있으면 호출하지 않고 CallNotPermittedException을 던지며, 이 역시 검색 실패(SERVER_001)입니다.
 @Component
 @RequiredArgsConstructor
 public class ProfileClientAdapter implements ProfileClient {
+    static final String CIRCUIT_BREAKER = "recUserProfile";
+
     private final UserProfileFeignClient userProfileFeignClient;
+    private final CircuitBreakerRegistry circuitBreakerRegistry;
 
     @Override
     public SearchProfileDTO getActiveProfile(Long memberId) {
-        ApiResponse<MemberProfileDTO> response = userProfileFeignClient.getMemberProfile(memberId);
+        ApiResponse<MemberProfileDTO> response = circuitBreakerRegistry.circuitBreaker(CIRCUIT_BREAKER)
+                .executeSupplier(() -> userProfileFeignClient.getMemberProfile(memberId));
         // 204·빈 본문·실패 형식·result 누락은 빈 조건으로 바꾸지 않고 검색 실패로 처리합니다.
         if (response == null || !Boolean.TRUE.equals(response.getIsSuccess())
                 || !SuccessStatus.OK.getCode().equals(response.getCode()) || response.getResult() == null) {

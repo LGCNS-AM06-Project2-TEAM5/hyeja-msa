@@ -49,7 +49,8 @@ class SecurityConfigTest {
 
     @BeforeEach
     void setup() {
-        context = new AnnotationConfigApplicationContext(TestConfig.class, SecurityConfig.class);
+        context = new AnnotationConfigApplicationContext(TestConfig.class, SecurityConfig.class,
+                com.hyeja.gateway.observability.MonitoringSecurityConfiguration.class);
         blacklist = context.getBean(TokenBlacklist.class);
         when(blacklist.contains(anyString())).thenReturn(Mono.just(false));
         client = WebTestClient.bindToApplicationContext(context)

@@ -130,6 +130,8 @@ Gateway 라우팅과 인증 규칙은 [infra/gateway-service](../../infra/gatewa
 
 안전장치: 발행은 DB 커밋 뒤(Outbox 권장), 구독은 `eventId`로 중복 무시, 실패 시 재시도 후 DLT.
 
+`policy-updated` 구독(engagement, 그룹 `engagement-policy-snapshot`): `policy_snapshot`을 넣거나 고치고 `deleted=true`면 삭제 표시합니다. 처리한 `eventId`는 `processed_policy_event`에 남겨 다시 오면 건너뜁니다. 실패하면 1초 간격으로 3번 더 시도하고, 그래도 실패하거나 JSON이 깨졌으면 `policy-updated-dlt`로 보냅니다.
+
 
 ## F2 정책 후보 조회 (Issue #53)
 
@@ -255,9 +257,13 @@ favoriteId·관심 등록일은 Engagement 소유 데이터이므로 이 응답�
 3. 스냅샷 반영과 관심 등록은 같은 로컬 트랜잭션으로 처리. 중복은 Engagement의 `409 / FAVORITE_001` 유지.
 4. F5의 404·서버 오류·타임아웃·연결 실패 시 관심을 저장하지 않음. 장애를 정책 없음으로 바꾸지 않음.
 
-위 소비·저장은 Engagement 담당 범위이며 이번 Policy 구현이 완료를 보장하지 않습니다.
+Engagement 소비·저장은 #90에서 구현합니다. F5 호출은 로컬 스냅샷이 있어도 등록 때마다 수행하고,
+외부 호출 후 공통 `PolicySnapshotUpdater.upsert`와 관심 저장을 같은 로컬 트랜잭션으로 처리합니다.
+F5가 `404 / POLICY_001`을 반환하면 그대로 전달합니다. 그 외 HTTP 오류·연결 실패·시간 초과·비정상 응답은
+Engagement 외부 API에서 `503 / SERVER_002`로 반환하며 기존 스냅샷으로 대신 등록하지 않습니다.
+중복 등록은 `409 / FAVORITE_001`이고 스냅샷 변경도 롤백됩니다. 실제 서비스 간 통신 검증은 별도입니다.
 관심 삭제는 원본이 정책 존재 여부만 검사하므로, F5를 그대로 재사용하지 않고 별도로 협의합니다.
 이후 스냅샷 갱신은 policy-updated 이벤트와 연결하며, 이벤트 발행·소비와 순서/버전 처리는 별도 작업입니다.
 
-인증: /internal/**는 Gateway 외부 라우팅에 노출하지 않습니다. 내부 인증 수단·헤더는 인프라와 미확정이며
-이번 구현에는 인증 검증을 추가하지 않습니다. 사용자 JWT·X-Member-Id를 F5 인증 수단으로 가정하지 않습니다.
+인증: 팀 합의에 따라 /internal/**는 Gateway 외부 라우팅에 노출하지 않고 내부 네트워크에서만 호출합니다.
+별도 X-Internal-Token은 사용하지 않습니다. 사용자 JWT·X-Member-Id를 F5 인증 수단으로 사용하지 않습니다.
