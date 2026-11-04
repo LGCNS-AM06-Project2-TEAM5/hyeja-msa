@@ -345,6 +345,11 @@ services:
     volumes:
       - ./docker/config-tls/trust:/run/config-trust:ro
       - user-logs:/app/logs
+    # 384M에서는 켜 두기만 해도 상한에 붙어 OOM(137)으로 재시작해서 gateway와 같은 512M로 둡니다.
+    deploy:
+      resources:
+        limits:
+          memory: 512M
     depends_on: *business-dependencies
 
   policy-service:
