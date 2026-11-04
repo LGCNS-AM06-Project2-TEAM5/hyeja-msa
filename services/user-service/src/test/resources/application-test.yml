@@ -29,3 +29,8 @@ eureka:
 
 jwt:
   secret: hyeja-test-only-jwt-secret-key-0123456789
+
+# 개발 PC의 환경변수와 무관하게 테스트에서는 관리자 계정을 자동 생성하지 않습니다.
+admin:
+  email: ""
+  password: ""

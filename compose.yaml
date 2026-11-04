@@ -297,6 +297,8 @@ services:
       MANAGEMENT_HEALTH_MAIL_ENABLED: "false"
       MAIL_USERNAME: ${MAIL_USERNAME:-}
       MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
     volumes:
       - ./docker/config-tls/trust:/run/config-trust:ro
       - user-logs:/app/logs
