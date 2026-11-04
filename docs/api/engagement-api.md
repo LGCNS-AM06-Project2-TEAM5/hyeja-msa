@@ -1,10 +1,10 @@
 # Engagement API 명세서
 
-기준일: 2026-11-03. 현재 브랜치의 구현 기준이며, 미구현 연동은 마지막 절에 구분한다.
+기준일: 2026-11-03. engagement 구현 메모(스케줄러·테스트 범위 등)이다. API ID(ENG-01~07)별 최종 요청·응답·오류 계약은 [API 명세](README.md#6-engagement-service-api)가 기준이며, 두 문서가 다르면 그쪽을 따른다.
 
 ## 1. 범위 및 인증
 
-- 외부 API 6개: 관심 등록·해제·목록, 알림 조회·읽음·삭제. 알림 생성은 스케줄러만 담당한다.
+- 외부 API 6개(ENG-01~06): 관심 등록·해제·목록, 알림 조회·읽음·삭제. 알림 생성은 스케줄러만 담당한다. 내부 API 1개(ENG-07 `POST /internal/favorites/active-policy-ids`, F3·F4)는 [API 명세](README.md#eng-07)에 있다.
 - 관심 등록은 F5 Feign으로 Policy 원본을 조회한 뒤 engagement DB에 저장한다. policy-updated 구독은 별도 Kafka 경로로 읽기 모델을 갱신한다.
 - 회원 ID는 숫자만 저장한다. 회원 존재·탈퇴 여부는 확인하지 않는다.
 - 정책 정보는 engagement DB의 `policy_snapshot` 읽기 모델이다. 관심 등록은 매번 F5로 정책 유효성을 확인하고 스냅샷을 생성·갱신한다. 목록·알림은 로컬 읽기 모델을 조회한다.
@@ -230,31 +230,27 @@ path notificationId는 양수 Long. 본인 알림 행을 영구 삭제한다. �
 
 ## 5. 실행 및 검증 범위
 
-기본 dev 프로필은 MariaDB를 사용하며 테스트 데이터를 자동 생성하지 않는다. ENGAGEMENT_DB_URL, ENGAGEMENT_DB_USERNAME, ENGAGEMENT_DB_PASSWORD를 실행 환경에 설정한다. 정책 원본 연동 전에는 로컬 policy_snapshot에 정책 데이터를 준비해야 관심을 등록할 수 있다.
+기본 dev 프로필은 MariaDB를 사용하며 테스트 데이터를 자동 생성하지 않는다. ENGAGEMENT_DB_URL, ENGAGEMENT_DB_USERNAME, ENGAGEMENT_DB_PASSWORD를 실행 환경에 설정한다. 관심 등록에는 F5에 응답하는 policy-service가 필요하며, 등록 때 로컬 policy_snapshot이 F5 응답으로 생성·갱신된다.
 
 ```powershell
 ./services/engagement-service/gradlew.bat -p services/engagement-service test --no-daemon
 ```
 
 테스트는 H2를 사용한다. FavoriteServiceTest는 관심 중복·해제·재등록·검색·회원 격리와 HTTP JSON·인증을, NotificationServiceTest는 서울 날짜 기준 스케줄러 호출·D-7 계산·중복 방지·소유권·읽음·삭제 및 수동 생성 경로 제거를 확인한다. 생성은 스케줄러가 담당하며 테스트에서는 자정 대기 없이 같은 메서드를 호출한다. 실제 Gateway/Feign/Kafka/MariaDB 전체 연동과 자정 자동 실행은 검증 범위 밖이다.
-## 6. Issue #6 상태와 추후 연동 계약
+## 6. 서비스 간 연동 상태
 
-[Issue #6](https://github.com/LGCNS-AM06-Project2-TEAM5/hyeja-msa/issues/6)에 기재된 외부 API 중 수동 생성을 제외한 6개 및 스케줄러·정책 읽기 모델을 구성했다. 수동 생성은 사용자 결정에 따라 제거했다. F5 소비는 #90에서 구현하며 실제 서비스 간 연동 검증은 별도다. F3·F4 및 남은 이벤트 연동의 완료 여부는 별도 PR 기준으로 확인하며 이슈 전체 완료로 처리하지 않는다.
+[Issue #6](https://github.com/LGCNS-AM06-Project2-TEAM5/hyeja-msa/issues/6)의 외부 API 중 수동 생성을 제외한 6개와 스케줄러·정책 읽기 모델을 구성했다. 수동 생성은 사용자 결정에 따라 제거했다.
 
-현재 member는 스칼라 ID이고 정책 원본 DB와의 FK는 없다. 다만 favorite/notification의 policy는 같은 engagement DB의 policy_snapshot에 JPA 연관관계·FK를 유지한다. 이슈의 ‘ID만 저장’이 로컬 읽기 모델 관계까지 금지하는 의미인지는 팀에서 확정해야 한다. 현재 구조는 원격 DB JOIN을 하지 않는다.
+현재 member는 스칼라 ID이고 정책 원본 DB와의 FK는 없다. 다만 favorite/notification의 policy는 같은 engagement DB의 policy_snapshot에 JPA 연관관계·FK를 유지한다. 현재 구조는 원격 DB JOIN을 하지 않는다.
 
-아래는 합의할 내용이며 확정된 경로·이벤트 스키마가 아니다. [서비스 간 계약](README.md)과 함께 갱신한다.
-
-| 연결 | 현재 연결 지점 | 합의할 내용 |
+| 연결 | 연결 지점 | 상태 |
 |---|---|---|
-| engagement → policy, F5 Feign | FavoriteService.createFavorite → PolicySnapshotReader → FavoriteRegistrationService | #90에서 합의된 계약 구현. 등록 때마다 호출, 404 POLICY_001 유지, 통신·응답 오류는 503 SERVER_002, 실패 시 저장하지 않음. 실제 연동은 별도 검증 |
-| policy/recommendation → engagement, F3·F4 Feign | FavoriteRepository.findActivePolicyIds | 내부 일괄 조회 경로·요청/응답 DTO, 인증된 회원 ID 전달 방식, 요청 최대 ID 수, 빈 목록·없는 ID 처리, 실패 시 하트 표시 정책. Repository만 존재하고 API는 미구현 |
-| policy → engagement, policy-updated Kafka | policy_snapshot 갱신, 검색·목록·D-7 대상 판단 | 필드·enum 표현, eventId/eventVersion/occurredAt, key=policyId, 정책 변경 버전·역순 이벤트 처리, 삭제/비활성 표현, 최초 데이터 적재·재동기화, 발행 신뢰성(Outbox 등), 재시도·DLT |
-| user → engagement, member-withdrawn Kafka | 회원 ID 기준 favorite/notification 삭제 | memberId와 공통 이벤트 메타데이터, DB 커밋 후 발행, eventId 중복 처리, 원자적 정리·재시도·DLT. 탈퇴 이벤트와 관심 등록이 경합하거나 이벤트가 늦게 도착할 때 재생성을 막을지 결정 |
-| gateway → engagement | GatewayTokenVerifier·보안 필터·principal | 대칭키 내부 JWT 인증 구현. TLS·네트워크 접근 제한·키 교체는 운영 인프라 협의 |
+| engagement → policy, F5 Feign | FavoriteService.createFavorite → PolicySnapshotReader → FavoriteRegistrationService | 구현(#90), 서킷 브레이커 `engPolicySnapshot`(#122), 실제 연동 검증 [#112](../05_테스트케이스/f5-live-verification-112.md) |
+| policy/recommendation → engagement, F3·F4 Feign | InternalFavoriteController → FavoriteRepository.findActivePolicyIds | 구현(#84). 계약은 [ENG-07](README.md#eng-07) |
+| policy → engagement, policy-updated Kafka | PolicyUpdatedListener → PolicySnapshotUpdater | 구현(#88), 중복 무시·재시도·DLT·처리 지표(#111). 계약은 [API 명세 9장](README.md#9-kafka-이벤트-계약) |
+| user → engagement, member-withdrawn Kafka | MemberWithdrawnListener → MemberEngagementCleanupService | 구현(#101), 멱등성(#110), DLT 관리자 메일(#107) |
+| gateway → engagement | GatewayTokenVerifier·보안 필터·principal | 대칭키 내부 JWT(`X-Gateway-Assertion`) 구현 |
 
-정책명은 읽기 모델에서 조회하므로 갱신 이벤트 적용 후 목록·알림 응답에 반영된다. 알림의 마감일은 생성 당시 값이다. 정책 변경·삭제를 이유로 기존 관심·알림을 자동 삭제하는 기능은 추가하지 않는다. 회원 탈퇴는 이벤트 반영 전까지 로컬에서 알 수 없다는 지연 특성을 합의해야 한다.
+정책명은 읽기 모델에서 조회하므로 갱신 이벤트 적용 후 목록·알림 응답에 반영된다. 알림의 마감일은 생성 당시 값이다. 정책 변경·삭제를 이유로 기존 관심·알림을 자동 삭제하는 기능은 추가하지 않는다. 회원 탈퇴는 이벤트가 반영되기 전까지 로컬에서 알 수 없다(최종 일관성).
 
-알림 생성·조회·읽음·삭제에는 추가 Feign 호출이 필요하지 않다. Kafka가 로컬 데이터 갱신·정리를 담당하면 해당 데이터만으로 처리할 수 있다. 메일 발송용 notification-created 이벤트는 이번 구현 밖이다.
-
-현재 변경은 독립 기능 단계의 커밋으로 저장할 수 있다. 예: `feat : 관심 정책 및 D-7 알림 독립 기능 구현 (#6)`. F3·F4·F5 및 이벤트 연동이 끝나기 전에는 이슈 자동 종료 문구(Closes #6)를 사용하지 않는다.
+알림 생성·조회·읽음·삭제에는 추가 Feign 호출이 필요하지 않다. 메일 발송용 notification-created 이벤트는 구현하지 않았다.

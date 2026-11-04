@@ -4,6 +4,8 @@
 
 회원가입, 이메일 인증, 로그인·로그아웃(JWT 발급), 내 계정·이메일 찾기, 회원 탈퇴, 내 조건(프로필 8개 항목) 저장·조회를 맡습니다.
 
+관리자 계정 자동 생성(#126): 기동할 때 `ADMIN_EMAIL`·`ADMIN_PASSWORD`가 모두 있고 같은 이메일이 없으면 `AdminInitializer`가 관리자 계정을 한 번 만듭니다(비밀번호 BCrypt). 값이 비어 있거나 이미 있으면 건너뜁니다.
+
 ## 외부 API (Gateway 경로, 기존 계약 유지)
 
 | 메서드 | 경로 | 인증 |
@@ -29,7 +31,7 @@
 
 | 방향 | 방식 | 내용 |
 |---|---|---|
-| 제공 → recommendation, policy | Feign `GET /internal/members/{memberId}/profile` | 회원의 내 조건 조회 (생년월일, 거주지 코드·시군구 이름, 취업 상태, 무주택, 혼인, 소득 구간, 학력, 주거 형태). 응답·오류는 [서비스 간 계약](../../docs/api/README.md#f1f6-회원-조건-조회-user-제공) |
+| 제공 → recommendation, policy | Feign `GET /internal/members/{memberId}/profile` | 회원의 내 조건 조회 (생년월일, 거주지 코드·시군구 이름, 취업 상태, 무주택, 혼인, 소득 구간, 학력, 주거 형태). 응답·오류는 [USR-11 계약](../../docs/api/README.md#usr-11) |
 | 지역 복사본 | user_db `region` | 거주지 코드 검증과 시군구 이름. 원본은 policy와 같은 `region_sigungu.csv`이고, user_db `region`은 기동 때 이 파일로 적재하는 읽기 전용 복사본입니다. CSV가 바뀌면 두 서비스가 다시 기동해 맞춥니다. policy는 호출하지 않습니다 (#1 확정) |
 | 발행 | Kafka `member-registered` | 웰컴 메일용. 이번에 하지 않음 (#1 확정) |
 | 발행 | Kafka `member-withdrawn` | 탈퇴 트랜잭션에 `member_outbox` 행을 함께 기록합니다. Relay가 Kafka로 보내면 engagement가 관심 정책·알림을 정리합니다. Saga는 선택 (#1 확정) |
