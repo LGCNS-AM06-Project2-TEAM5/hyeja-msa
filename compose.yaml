@@ -210,6 +210,32 @@ services:
       recommendation-service:
         condition: service_healthy
 
+  # Prometheus 값을 그래프로 봅니다. 대시보드는 docker/grafana에서 자동으로 올라옵니다(http://localhost:3000).
+  grafana:
+    image: grafana/grafana-oss:11.4.0
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${GRAFANA_HOST_PORT:-3000}:3000"
+    environment:
+      # 보기 전용으로만 엽니다. 로그인 화면과 Basic 인증을 꺼서 기본 admin 비밀번호로 들어올 수 없습니다.
+      # 대시보드는 docker/grafana JSON으로만 고칩니다. localhost에만 열려 있습니다.
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_AUTH_DISABLE_LOGIN_FORM: "true"
+      GF_AUTH_BASIC_ENABLED: "false"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/hyeja-msa.json
+      GF_USERS_DEFAULT_LANGUAGE: ko-KR
+    volumes:
+      - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./docker/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    depends_on:
+      - prometheus
+
   discovery-service:
     <<: *app
     build:

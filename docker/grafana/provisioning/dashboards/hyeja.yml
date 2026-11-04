@@ -1,0 +1,10 @@
+# docker/grafana/dashboards 안의 JSON을 "혜자 MSA" 폴더에 올립니다. 화면에서 고쳐도 저장되지 않으니 JSON을 고칩니다.
+apiVersion: 1
+providers:
+  - name: hyeja
+    folder: 혜자 MSA
+    type: file
+    disableDeletion: true
+    allowUiUpdates: false
+    options:
+      path: /var/lib/grafana/dashboards
