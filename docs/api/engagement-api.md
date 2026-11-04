@@ -1,0 +1,256 @@
+# Engagement API 명세서
+
+기준일: 2026-11-03. engagement 구현 메모(스케줄러·테스트 범위 등)이다. API ID(ENG-01~07)별 최종 요청·응답·오류 계약은 [API 명세](README.md#6-engagement-service-api)가 기준이며, 두 문서가 다르면 그쪽을 따른다.
+
+## 1. 범위 및 인증
+
+- 외부 API 6개(ENG-01~06): 관심 등록·해제·목록, 알림 조회·읽음·삭제. 알림 생성은 스케줄러만 담당한다. 내부 API 1개(ENG-07 `POST /internal/favorites/active-policy-ids`, F3·F4)는 [API 명세](README.md#eng-07)에 있다.
+- 관심 등록은 F5 Feign으로 Policy 원본을 조회한 뒤 engagement DB에 저장한다. policy-updated 구독은 별도 Kafka 경로로 읽기 모델을 갱신한다.
+- 회원 ID는 숫자만 저장한다. 회원 존재·탈퇴 여부는 확인하지 않는다.
+- 정책 정보는 engagement DB의 `policy_snapshot` 읽기 모델이다. 관심 등록은 매번 F5로 정책 유효성을 확인하고 스냅샷을 생성·갱신한다. 목록·알림은 로컬 읽기 모델을 조회한다.
+- Gateway는 사용자 JWT·블랙리스트를 검증하고 2분짜리 내부 JWT를 발급한다. engagement는 내부 JWT를 검증해 회원을 식별한다. [내부 인증 설계](../architecture/gateway-engagement-auth.md)를 참고한다.
+- 서비스 포트는 실행 설정을 따른다. 실제 Gateway 주소·포트는 Gateway 설정을 따른다.
+
+| 헤더 | 필수 | 규칙 |
+|---|---|---|
+| `X-Gateway-Assertion` | Gateway → engagement | Gateway가 생성한 내부 JWT. 클라이언트가 직접 설정하지 않음 |
+| `Authorization: Bearer ...` | 클라이언트 → Gateway | 기존 사용자 JWT. Gateway에서 검증 |
+
+모든 API의 회원 ID는 검증된 내부 JWT의 sub에서 principal로 전달한다. X-Member-Id 헤더는 무시한다. 외부 API(ENG-01~06)는 모두 Body가 없다. 내부 API ENG-07은 `memberId`·`policyIds` JSON Body를 받는다([계약](README.md#eng-07)). 수동 알림 생성 API는 제공하지 않는다.
+
+## 2. 공통 응답
+
+모든 성공은 HTTP 200이며 아래 구조를 따른다. 삭제 성공도 204가 아닌 200이다.
+
+```json
+{
+  "isSuccess": true,
+  "code": "SUCCESS_001",
+  "message": "성공입니다.",
+  "result": null
+}
+```
+
+`result`는 API별 객체·정수 또는 null이다. 일반 도메인 오류 예:
+
+```json
+{
+  "isSuccess": false,
+  "code": "NOTIFICATION_001",
+  "message": "존재하지 않는 알림입니다.",
+  "result": null
+}
+```
+
+| HTTP | 코드 | 발생 조건 |
+|---|---|---|
+| 400 | `COMMON_001` | 잘못된 쿼리·경로 타입, 필수 쿼리 누락, page<0, size<=0, 양수 제약 위반 등 |
+| 401 | `COMMON_002` | 내부 JWT 누락·서명 오류·만료·필수 claim 오류 |
+| 404 | `POLICY_001` | 등록 시 F5가 정책 없음·삭제·비활성을 반환하거나, 해제 시 로컬 정책 없음 |
+| 404 | `FAVORITE_002` | 본인의 등록된 관심 정책 없음 |
+| 404 | `NOTIFICATION_001` | 본인 알림 없음. 타 회원 알림도 동일 코드 |
+| 409 | `FAVORITE_001` | 회원·정책 중복 관심 등록 |
+| 500 | `SERVER_001` | 처리하지 못한 서버 오류 |
+| 503 | `SERVER_002` | F5 HTTP 오류·연결 실패·시간 초과·비정상 응답. 정책 없음으로 처리하지 않음 |
+
+현재 회원 확인을 하지 않으므로 `MEMBER_001`은 반환하지 않는다. 필드/객체 검증 오류는 공통 예외 처리상 `COMMON_003`과 오류 맵을 사용할 수 있으나, 현재 API의 scalar 쿼리·경로 제약은 주로 `COMMON_001`로 반환된다.
+
+날짜는 `YYYY-MM-DD`, 시각은 시간대 오프셋 없는 `YYYY-MM-DDTHH:mm:ss[.소수초]` 형식이다. D-7 기준일 계산은 Asia/Seoul이다.
+
+## 3. 관심 정책
+
+### 3.1 관심 등록
+
+`POST /api/favorite/{policyId}`
+
+| 위치 | 필드 | 타입 | 설명 |
+|---|---|---|---|
+| path | policyId | string | Policy 원본의 정책 ID |
+
+동작: F5 정책 유효성 확인 → 로컬 스냅샷 생성·갱신 → 중복 확인 → 관심 저장. F5 호출 후 스냅샷과 관심 저장은 같은 로컬 트랜잭션으로 처리한다. 성공 `result`는 아래 FavoriteItem이다. 동일 정책을 다시 등록하면 409이며 스냅샷 변경도 롤백된다. 해제 후 재등록은 새 favorite_id를 생성한다. 신청 기간을 추가 검사하지 않으므로 마감·CLOSED 정책도 F5 성공 시 허용한다.
+
+```json
+{
+  "isSuccess": true,
+  "code": "SUCCESS_001",
+  "message": "성공입니다.",
+  "result": {
+    "favorite_id": 1,
+    "policy_id": "LOCAL-POLICY-001",
+    "policy_name": "로컬 테스트 월세 지원",
+    "category_codes": ["MONTHLY_RENT"],
+    "category_names": ["월세"],
+    "support_content": "Postman 테스트용 정책 데이터",
+    "apply_end_date": "2026-11-09",
+    "apply_period_code": "SPECIFIC_PERIOD",
+    "apply_url": "https://example.com/apply",
+    "created_at": "2026-11-02T15:00:00"
+  }
+}
+```
+
+예시 날짜·ID는 설명용입니다. 실제 테스트 시에는 F5 정책 조회에 응답하는 서버가 필요합니다. 관심 등록 시 로컬 policy_snapshot은 F5 응답으로 생성·갱신됩니다.
+
+FavoriteItem 필드:
+
+| 필드 | JSON 타입 | 설명 |
+|---|---|---|
+| favorite_id | integer(int64) | 관심 등록 ID |
+| policy_id | string | 정책 ID |
+| policy_name | string | 로컬 읽기 모델의 정책명 |
+| category_codes | string[] | 정책 분류 enum 이름. 집합이므로 배열 순서 보장 없음 |
+| category_names | string[] | 코드 이름순 정렬 후 변환한 분류명 |
+| support_content | string/null | 지원 내용 |
+| apply_end_date | string(date)/null | 로컬 읽기 모델의 마감일 |
+| apply_period_code | string | `SPECIFIC_PERIOD`, `ALWAYS`, `CLOSED`. 숫자 외부 API 코드가 아님 |
+| apply_url | string/null | 신청 URL |
+| created_at | string(datetime) | 관심 등록 시각 |
+
+분류 코드: `MONTHLY_RENT`=월세, `JEONSE`=전세, `PURCHASE`=청약·구입, `PUBLIC_RENT`=공공임대, `OTHER`=기타 주거. category_names와 category_codes를 배열 인덱스로 짝지으면 안 된다.
+
+오류: 공통 인증 오류, 404 `POLICY_001`, 409 `FAVORITE_001`, 503 `SERVER_002`.
+
+### 3.2 관심 목록·검색
+
+`GET /api/favorite`
+
+| query | 타입 | 필수 | 기본값 | 제약 |
+|---|---|---|---|---|
+| keyword | string | 아니오 | 없음 | 정책명 또는 지원 내용 부분 검색. 앞뒤 공백 제거, 빈 문자열이면 전체 조회 |
+| page | integer | 아니오 | 0 | 0 이상 |
+| size | integer | 아니오 | 8 | 양수. 현재 별도 상한 없음 |
+
+예: `/api/favorite?keyword=월세&page=0&size=8`
+
+본인의 관심만 조회한다. `created_at DESC, favorite_id DESC` 정렬. `%`, `_`, `!`는 검색 와일드카드가 아닌 문자로 처리한다. 조회 시 정책의 현재 active/deleted 상태를 추가 필터링하지 않으며, 로컬 읽기 모델의 저장 값을 반환한다.
+
+성공 `result`:
+
+```json
+{
+  "favorites": [],
+  "page": 0,
+  "size": 8,
+  "totalElements": 0,
+  "totalPages": 0,
+  "hasNext": false
+}
+```
+
+favorites 원소는 FavoriteItem. totalElements는 검색 조건에 맞는 전체 관심 수, totalPages는 해당 size 기준 전체 페이지 수, hasNext는 다음 페이지 유무다. 데이터가 없거나 범위를 벗어난 page는 200과 빈 배열을 반환한다. 범위 밖 page라도 전체 건수는 유지한다.
+
+오류: 공통 인증 오류, 잘못된 page/size는 400.
+
+### 3.3 관심 해제
+
+`DELETE /api/favorite/{policyId}`
+
+path policyId는 string. 헤더 회원의 관심 행을 영구 삭제한다. 성공 `result: null`.
+
+오류: 로컬 정책 자체가 없으면 404 `POLICY_001`; 로컬 정책은 있지만 본인 관심이 없으면 404 `FAVORITE_002`. 반복 삭제도 404이며, 다른 회원의 관심에는 영향을 주지 않는다. 생성된 알림을 함께 삭제하지 않는다.
+
+## 4. 알림
+
+### 4.1 알림 목록
+
+`GET /api/notification`
+
+| query | 타입 | 필수 | 기본값 | 제약 |
+|---|---|---|---|---|
+| page | integer | 아니오 | 0 | 0 이상 |
+| size | integer | 아니오 | 8 | 양수. 현재 별도 상한 없음 |
+
+본인의 알림만 조회한다. `created_at DESC, notification_id DESC` 정렬. 조회만으로 읽음 처리하지 않는다.
+
+성공 `result` 예:
+
+```json
+{
+  "notifications": [
+    {
+      "notification_id": 1,
+      "member_id": 1,
+      "policy_id": "LOCAL-POLICY-001",
+      "policy_name": "로컬 테스트 월세 지원",
+      "content": "관심 정책의 신청 마감이 일주일 남았어요",
+      "read_yn": false,
+      "apply_end_date": "2026-11-09",
+      "created_at": "2026-11-02T15:00:00"
+    }
+  ],
+  "unread_count": 1,
+  "page": 0,
+  "size": 8,
+  "totalElements": 1,
+  "totalPages": 1,
+  "hasNext": false
+}
+```
+
+NotificationItem 필드:
+
+| 필드 | JSON 타입 | 설명 |
+|---|---|---|
+| notification_id | integer(int64) | 알림 ID |
+| member_id | integer(int64) | 알림 수신 회원 ID |
+| policy_id | string | 정책 ID |
+| policy_name | string | 로컬 읽기 모델의 정책명 |
+| content | string | 현재 고정 문구: 관심 정책의 신청 마감이 일주일 남았어요 |
+| read_yn | boolean | 읽음 여부. 생성 시 false |
+| apply_end_date | string(date) | 알림 생성 당시 저장한 마감일. 정책 변경 시에도 유지 |
+| created_at | string(datetime) | 알림 생성 시각 |
+
+unread_count는 현재 페이지 수가 아니라 해당 회원의 삭제되지 않은 전체 미읽음 알림 수다. 빈 목록은 notifications=[]이고, 페이징 필드는 관심 목록과 같은 의미다.
+
+오류: 공통 인증 오류, 잘못된 page/size는 400.
+
+### 4.2 알림 읽음
+
+`PATCH /api/notification/{notificationId}/read`
+
+path notificationId는 양수 Long. 본인 알림의 read_yn을 true로 바꾸고, 성공 `result`로 NotificationItem을 반환한다. 이미 읽은 알림도 200으로 반환한다. 읽음 후 목록의 unread_count가 감소한다.
+
+오류: 400 잘못된 ID; 404 `NOTIFICATION_001`(없음·삭제됨·타 회원 소유). 공통 인증 오류 적용.
+
+### 4.3 알림 삭제
+
+`DELETE /api/notification/{notificationId}`
+
+path notificationId는 양수 Long. 본인 알림 행을 영구 삭제한다. 성공 `result: null`. 반복 삭제 또는 타 회원 알림은 404 `NOTIFICATION_001`. 미읽음 알림을 삭제하면 unread_count에서도 제외한다.
+
+오류: 400 잘못된 ID, 404 `NOTIFICATION_001`, 공통 인증 오류.
+
+### 4.4 자동 생성 — HTTP API 아님
+
+`NotificationScheduler`: cron `0 5 0 * * *`, zone `Asia/Seoul`. 매일 00:05에 전체 회원의 로컬 관심을 대상으로 실행한다. test 프로필에서는 비활성화된다.
+
+대상: 관심이 삭제되지 않았고, 로컬 정책이 삭제되지 않았으며 activeYn=true이고 applyEndDate가 서울 기준 오늘 +7일인 경우다. 현재 apply_period_code에 대한 별도 필터는 없고 회원 탈퇴 상태도 조회하지 않는다.
+
+관심은 회원·정책, 알림은 회원·정책·마감일에 DB 유일 제약을 둔다. 알림을 hard delete한 뒤 같은 기준일에 다시 생성하면 재생성될 수 있다. 다중 인스턴스 동시 실행 시 DB 중복 저장은 방지하지만 충돌 트랜잭션은 실패할 수 있으므로 현재 스케줄러는 한 인스턴스 실행을 전제로 한다.
+
+## 5. 실행 및 검증 범위
+
+기본 dev 프로필은 MariaDB를 사용하며 테스트 데이터를 자동 생성하지 않는다. ENGAGEMENT_DB_URL, ENGAGEMENT_DB_USERNAME, ENGAGEMENT_DB_PASSWORD를 실행 환경에 설정한다. 관심 등록에는 F5에 응답하는 policy-service가 필요하며, 등록 때 로컬 policy_snapshot이 F5 응답으로 생성·갱신된다.
+
+```powershell
+./services/engagement-service/gradlew.bat -p services/engagement-service test --no-daemon
+```
+
+테스트는 H2를 사용한다. FavoriteServiceTest는 관심 중복·해제·재등록·검색·회원 격리와 HTTP JSON·인증을, NotificationServiceTest는 서울 날짜 기준 스케줄러 호출·D-7 계산·중복 방지·소유권·읽음·삭제 및 수동 생성 경로 제거를 확인한다. 생성은 스케줄러가 담당하며 테스트에서는 자정 대기 없이 같은 메서드를 호출한다. 실제 Gateway/Feign/Kafka/MariaDB 전체 연동과 자정 자동 실행은 검증 범위 밖이다.
+## 6. 서비스 간 연동 상태
+
+[Issue #6](https://github.com/LGCNS-AM06-Project2-TEAM5/hyeja-msa/issues/6)의 외부 API 중 수동 생성을 제외한 6개와 스케줄러·정책 읽기 모델을 구성했다. 수동 생성은 사용자 결정에 따라 제거했다.
+
+현재 member는 스칼라 ID이고 정책 원본 DB와의 FK는 없다. 다만 favorite/notification의 policy는 같은 engagement DB의 policy_snapshot에 JPA 연관관계·FK를 유지한다. 현재 구조는 원격 DB JOIN을 하지 않는다.
+
+| 연결 | 연결 지점 | 상태 |
+|---|---|---|
+| engagement → policy, F5 Feign | FavoriteService.createFavorite → PolicySnapshotReader → FavoriteRegistrationService | 구현(#90), 서킷 브레이커 `engPolicySnapshot`(#122), 실제 연동 검증 [#112](../05_테스트케이스/f5-live-verification-112.md) |
+| policy/recommendation → engagement, F3·F4 Feign | InternalFavoriteController → FavoriteRepository.findActivePolicyIds | 구현(#84). 계약은 [ENG-07](README.md#eng-07) |
+| policy → engagement, policy-updated Kafka | PolicyUpdatedListener → PolicySnapshotUpdater | 구현(#88), 중복 무시·재시도·DLT·처리 지표(#111). 계약은 [API 명세 9장](README.md#9-kafka-이벤트-계약) |
+| user → engagement, member-withdrawn Kafka | MemberWithdrawnListener → MemberEngagementCleanupService | 구현(#101), 멱등성(#110), DLT 관리자 메일(#107) |
+| gateway → engagement | GatewayTokenVerifier·보안 필터·principal | 대칭키 내부 JWT(`X-Gateway-Assertion`) 구현 |
+
+정책명은 읽기 모델에서 조회하므로 갱신 이벤트 적용 후 목록·알림 응답에 반영된다. 알림의 마감일은 생성 당시 값이다. 정책 변경·삭제를 이유로 기존 관심·알림을 자동 삭제하는 기능은 추가하지 않는다. 회원 탈퇴는 이벤트가 반영되기 전까지 로컬에서 알 수 없다(최종 일관성).
+
+알림 생성·조회·읽음·삭제에는 추가 Feign 호출이 필요하지 않다. 메일 발송용 notification-created 이벤트는 구현하지 않았다.

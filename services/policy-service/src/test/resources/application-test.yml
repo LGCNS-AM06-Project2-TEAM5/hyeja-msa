@@ -1,0 +1,30 @@
+spring:
+  ai:
+    openai:
+      api-key: test-not-a-real-key
+      chat:
+        options:
+          model: test-model
+  cloud:
+    bus:
+      enabled: false
+    config:
+      enabled: false
+  datasource:
+    driver-class-name: org.h2.Driver
+    url: jdbc:h2:mem:policy-test;DB_CLOSE_DELAY=-1
+    username: sa
+    password: ""
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+
+eureka:
+  client:
+    enabled: false
+
+youth:
+  api:
+    key: test-not-a-real-key
+    url: https://example.com/policies

@@ -1,0 +1,89 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '4.1.1'
+    id 'io.spring.dependency-management' version '1.1.7'
+}
+
+group = 'com.hyeja'
+version = '0.0.1-SNAPSHOT'
+description = 'policy-service'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+ext {
+    set('springCloudVersion', "2025.1.4")
+}
+
+dependencies {
+    testImplementation 'org.springframework.boot:spring-boot-micrometer-tracing-test'
+    testImplementation 'org.springframework.boot:spring-boot-micrometer-metrics-test'
+    testImplementation 'org.springframework.security:spring-security-test'
+    runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
+    implementation 'io.github.openfeign:feign-micrometer'
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'org.springframework.cloud:spring-cloud-starter-bus-kafka'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'org.springframework.boot:spring-boot-starter-zipkin'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'org.springframework.boot:spring-boot-starter-webmvc'
+    implementation 'org.springframework.cloud:spring-cloud-starter-config'
+    implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
+    // user(F6)·engagement(F4) 내부 API 호출
+    implementation 'org.springframework.cloud:spring-cloud-starter-openfeign'
+    // F4·F6 Feign 호출의 Circuit Breaker와 Prometheus 메트릭
+    implementation 'org.springframework.cloud:spring-cloud-starter-circuitbreaker-resilience4j'
+    implementation 'io.github.resilience4j:resilience4j-micrometer'
+    // policy-updated 발행(policy_outbox → Kafka)
+    implementation 'org.springframework.boot:spring-boot-starter-kafka'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation('com.openai:openai-java:4.69.2') {
+        exclude group: 'io.swagger.core.v3', module: 'swagger-annotations'
+    }
+    runtimeOnly 'org.mariadb.jdbc:mariadb-java-client'
+    // 지역 CSV 초기 적재(RegionDataInitializer)
+    implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-csv'
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+    testImplementation 'org.springframework.boot:spring-boot-starter-actuator-test'
+    testImplementation 'org.springframework.boot:spring-boot-starter-validation-test'
+    testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
+    testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'
+    testImplementation 'org.springframework.boot:spring-boot-starter-kafka-test'
+    testCompileOnly 'org.projectlombok:lombok'
+    testRuntimeOnly 'com.h2database:h2'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    testAnnotationProcessor 'org.projectlombok:lombok'
+}
+
+dependencyManagement {
+    imports {
+        mavenBom "org.springframework.cloud:spring-cloud-dependencies:${springCloudVersion}"
+    }
+}
+
+tasks.named('test') {
+    useJUnitPlatform {
+        excludeTags 'openai-integration'
+    }
+}
+
+tasks.register('openAiIntegrationTest', Test) {
+    description = 'Runs the explicitly requested live OpenAI policy analysis test.'
+    group = 'verification'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform {
+        includeTags 'openai-integration'
+    }
+    shouldRunAfter tasks.named('test')
+    // 실제 호출 검증을 명시적으로 요청하면 이전 결과와 관계없이 실행합니다.
+    outputs.upToDateWhen { false }
+}

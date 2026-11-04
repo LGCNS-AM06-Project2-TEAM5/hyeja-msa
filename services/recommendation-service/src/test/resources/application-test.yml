@@ -1,0 +1,18 @@
+spring:
+  cloud:
+    bus:
+      enabled: false
+    config:
+      enabled: false
+    discovery:
+      enabled: false
+  ai:
+    openai:
+      api-key: test-not-a-real-key
+      chat:
+        options:
+          model: test-model
+
+eureka:
+  client:
+    enabled: false

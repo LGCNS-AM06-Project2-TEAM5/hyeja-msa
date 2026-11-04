@@ -2,8 +2,8 @@
 /infra/                           @ljw2869
 /docker/                          @ljw2869
 /k8s/                             @ljw2869
-/services/user-service/           @kangtaee
+/services/user-service/           @kangtaee @deallight
 /services/policy-service/         @yejun05011 @jnnxeo
-/services/engagement-service/     @hand-soo
+/services/engagement-service/     @ljw2869 @hand-soo
 /services/recommendation-service/ @JibeomRyu
 /docs/                            @jnnxeo

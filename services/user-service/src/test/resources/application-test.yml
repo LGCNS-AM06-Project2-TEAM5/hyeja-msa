@@ -1,0 +1,36 @@
+spring:
+  # 컨텍스트 테스트에서 JavaMailSender Bean만 생성합니다. 실제 메일은 보내지 않습니다.
+  mail:
+    host: localhost
+
+  # Config Server(8888)에 접속하지 않음
+  cloud:
+    bus:
+      enabled: false
+    config:
+      enabled: false
+
+  datasource:
+    driver-class-name: org.h2.Driver
+    url: jdbc:h2:mem:user-test;MODE=MariaDB;DB_CLOSE_DELAY=-1
+    username: sa
+    # 빈 문자열 명시
+    password: ""
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+
+# Eureka(8761)에 등록하지 않음
+eureka:
+  client:
+    enabled: false
+
+jwt:
+  secret: hyeja-test-only-jwt-secret-key-0123456789
+
+# 개발 PC의 환경변수와 무관하게 테스트에서는 관리자 계정을 자동 생성하지 않습니다.
+admin:
+  email: ""
+  password: ""

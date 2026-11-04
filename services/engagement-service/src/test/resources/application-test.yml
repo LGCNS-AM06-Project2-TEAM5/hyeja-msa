@@ -1,0 +1,27 @@
+spring:
+  config:
+    import: ""
+  cloud:
+    bus:
+      enabled: false
+    config:
+      enabled: false
+    discovery:
+      enabled: false
+  datasource:
+    url: jdbc:h2:mem:engagement;MODE=MariaDB;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+eureka:
+  client:
+    enabled: false
+
+management:
+  health:
+    mail:
+      enabled: false
+
+internal-auth:
+  secret: test-only-internal-key-at-least-32-bytes-long

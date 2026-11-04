@@ -1,0 +1,68 @@
+spring:
+  cloud:
+    bus:
+      enabled: true
+      destination: hyeja-config-bus
+      id: ${spring.application.name}:${INSTANCE_ID:${random.uuid}}
+    stream:
+      kafka:
+        binder:
+          brokers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:19092}
+          auto-create-topics: false
+    config:
+      uri: ${CONFIG_SERVER_URL:https://localhost:8888}
+  application:
+    name: user-service
+
+  # 프로필을 지정하지 않으면 로컬 개발 설정(H2) 사용
+  profiles:
+    default: dev
+
+  # Config Server(8888)에서 외부 설정을 불러옴
+  # optional: 을 붙여 Config Server가 실행 중이 아니어도 애플리케이션이 기동되도록 설정
+  config:
+    import: "optional:configserver:${CONFIG_SERVER_URL:https://localhost:8888}"
+
+server:
+  port: 0
+
+# Gateway와 같은 환경변수를 사용합니다. 실제 키는 저장소에 커밋하지 않습니다.
+jwt:
+  secret: ${JWT_SECRET}
+
+# 값이 모두 있을 때만 기동 시 공용 관리자 계정을 생성합니다.
+admin:
+  email: ${ADMIN_EMAIL:}
+  password: ${ADMIN_PASSWORD:}
+
+---
+# Local defaults; Docker environment variables override infrastructure addresses.
+logging:
+  include-application-name: false
+  pattern:
+    correlation: '[${spring.application.name:},%X{traceId:-},%X{spanId:-}] '
+  file:
+    name: ${LOG_DIR:./logs}/${spring.application.name}.log
+  logback:
+    rollingpolicy:
+      max-file-size: ${LOG_MAX_FILE_SIZE:10MB}
+      max-history: 7
+      total-size-cap: 1GB
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  tracing:
+    sampling:
+      probability: ${TRACING_SAMPLING_PROBABILITY:0.1}
+    export:
+      zipkin:
+        endpoint: ${ZIPKIN_ENDPOINT:http://localhost:9411/api/v2/spans}
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true

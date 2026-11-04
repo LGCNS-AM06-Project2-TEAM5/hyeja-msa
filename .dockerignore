@@ -1,0 +1,13 @@
+.git
+.idea
+.env
+.env.*
+**/.env
+**/.env.*
+**/.gradle
+**/build
+**/*.log
+**/logs
+docs
+tmp
+docker/config-tls

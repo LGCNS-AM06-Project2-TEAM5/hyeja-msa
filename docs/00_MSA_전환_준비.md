@@ -86,8 +86,8 @@ LG CNS AM INSPIRE CAMP 6기 · 미니프로젝트 2 · 5조 · 작성일 2026-10
 | PolicyService, PolicySearchService | ProfileService(내 조건), FavoriteRepository(하트 표시), TermRepository 직접 사용 | 내 조건·하트는 Feign 호출, term은 같은 서비스 |
 | CardNewsService | ProfileService, FavoriteRepository 직접 사용 | 내 조건은 member, 관심 여부는 notification에 Feign 호출 |
 | NotificationGenerationService | MemberService, FavoriteRepository 직접 사용 | 관심 정책과 같은 서비스(notification)에 두어 통신 없이 조회. 회원 확인은 이벤트로 받은 탈퇴 정보로 대체 |
-| MemberService.withdraw | FavoriteRepository, NotificationRepository 직접 삭제 | 탈퇴 이벤트를 받아 notification이 정리. 실패 시 보상(Saga) |
-| Region | profile FK, policy_region FK, 수집 시 지역 코드 확인 | 바뀌지 않는 기준 데이터. 처리 방식은 강사님 추가 답변 후 확정 (1-7) |
+| MemberService.withdraw | FavoriteRepository, NotificationRepository 직접 삭제 | 탈퇴 이벤트를 받아 engagement가 정리. 실패 시 재시도 후 DLT (Saga는 선택, 이슈 #1) |
+| Region | profile FK, policy_region FK, 수집 시 지역 코드 확인 | 바뀌지 않는 기준 데이터. user_db에 읽기 복사본을 두고 같은 CSV로 적재합니다(#1 결정, 11-02 강사님 3번 답변과 같은 방식) (1-7) |
 
 ### 1-5. Kafka와 MSA 구성요소는 어디에 있나
 
@@ -122,18 +122,18 @@ MSA 구성요소는 **지원님 개인 실습 저장소**에 있습니다. 수�
 
 | 서비스 | 담당 | 테이블(DB) | 맡는 일 |
 |---|---|---|---|
-| user-service | 강태현, 차현준 | member, profile (`user_db`) | 가입·이메일 인증·로그인·JWT, 이메일 찾기, 탈퇴, 내 조건 8개 |
+| user-service | 강태현, 차현준 | member, profile, region 읽기 복사본 (`user_db`) | 가입·이메일 인증·로그인·JWT, 이메일 찾기, 탈퇴, 내 조건 8개 |
 | policy-service | 김예준, 홍준서 | policy, policy_region, region, term, card_news (`policy_db`) | 정책 목록·상세·수집, 지역, 용어, AI 정책 분석·카드뉴스 |
 | engagement-service | 손수연 | favorite, notification, 정책 스냅샷 (`engagement_db`) | 관심 정책, D-7 알림, (승인 시) 웰컴·마감 메일 |
 | recommendation-service | 류지범 | 없음 | 맞춤 검색(`/api/policies/search`), 자격 판정, AI 의도 분석·판정 이유 |
 | Eureka·Config·Gateway·Docker·K8s | 이지원 | - | 인프라 |
 
 - AI는 별도 서비스로 두지 않습니다. 정책 분석·카드뉴스는 policy, 검색·판정 설명은 recommendation에 둡니다(설계서 원칙).
-- 동기(Feign): recommendation→user·policy·engagement, policy→engagement, engagement→policy. **코드 대조로 추가 필요한 호출**: policy→user(내 조건), user→policy(지역), 정책 상세 판정 위치.
-- 비동기(Kafka): `policy-updated`(우선), `member-registered`·`notification-created`(신규 메일, 승인 후), `member-withdrawn`(제안).
+- 동기(Feign): recommendation→user·policy·engagement, policy→engagement, engagement→policy. **코드 대조로 추가 필요한 호출**: policy→user(내 조건). 지역은 user_db 복사본, 정책 상세 판정은 판정 코드를 같이 쓰기로 해 user→policy·policy→recommendation 호출은 두지 않습니다(이슈 #1 확정).
+- 비동기(Kafka): `policy-updated`(우선), `member-withdrawn`(이슈 #1 확정), `notification-created`(마감 알림 메일, 여유 있을 때). `member-registered`(웰컴 메일)는 이번에 하지 않습니다.
 - 상세 계약과 대조 결과는 hyeja-msa 저장소의 `docs/api/README.md`, `docs/architecture/설계_코드_대조.md`에 있습니다.
 
-**핵심 기술 후보**: Kafka 이벤트 동기화(`policy-updated` 멱등성·재시도·DLT, 1차 때 10분 걸리던 수집을 AI 분석과 분리) 또는 Saga(회원 탈퇴 보상).
+**핵심 기술 (이슈 #1 확정)**: Kafka 이벤트 동기화(`policy-updated` 멱등성·재시도·DLT, 1차 때 10분 걸리던 수집을 AI 분석과 분리). Saga(회원 탈퇴 보상)는 여유가 있으면 추가 핵심 기술로 검토합니다.
 
 ### 1-8. 프런트 연동
 
@@ -153,23 +153,23 @@ MSA 구성요소는 **지원님 개인 실습 저장소**에 있습니다. 수�
 
 ## 2. 궁금한 점과 강사님 답변 (10/30 미팅)
 
-강사님이 **3, 9, 11, 13번**은 정리해서 다음 미팅 때 다시 답하고, 조별 노션에 올려 주기로 했습니다.
+3, 9, 11번은 11-02 2차 미팅에서 추가 답변을 받았습니다(3번 정리 자료는 조별 노션). 13번은 공지로 해결되었습니다.
 
 | 번호 | 질문 | 강사님 답변 | 우리 판단 |
 |---|---|---|---|
 | 1 | 서비스 분리 단위 | 정답 없음. 결합도가 크면 억지로 쪼개지 말고 효율로 판단. 3~4개 이상이면 됨. 발표 때 "이런 기준으로 나눴다"를 말하면 차별화됨 | 팀 확정: user, policy, engagement, recommendation 4개 (1-7) |
 | 2 | 동기·비동기 기준 | 결과를 받아야 다음 작업을 할 수 있으면 동기(예: 계좌 인출). 결과가 당장 필요 없는 후속 작업은 비동기(예: 가입 환영 메일, 활동 포인트) | Feign 5개(+코드 대조로 2~3개), Kafka 토픽 3개(+탈퇴 제안) (1-7) |
-| 3 | FK·JOIN 처리 | 둘 중 고르면 **내 서비스 DB에 복사**. 자주 조회하는데 매번 통신하는 건 비효율. 정리 자료는 다음 미팅 때 보여 주심 | favorite에 정책명·마감일 스냅샷 (**추가 답변 대기**) |
+| 3 | FK·JOIN 처리 | 둘 중 고르면 **내 서비스 DB에 복사**. 자주 조회하는데 매번 통신하는 건 비효율. 11-02 추가: 자주 조회되고 잘 바뀌지 않는 데이터는 원래 서비스가 Kafka로 변경 이벤트를 내고, 쓰는 서비스가 필요한 컬럼만 자기 DB에 사본으로 둠. 항상 최신이어야 하거나 가끔 필요한 데이터는 OpenFeign으로 조회 | engagement `policy_snapshot`을 `policy-updated` 이벤트로 갱신(답변과 같은 방식). 회원 조건·관심 여부는 바꾼 직후 바로 반영돼야 해서 OpenFeign 조회 |
 | 4 | 여러 서비스 작업 실패 시 일관성 | 이전 작업은 롤백이 안 되니 **보상 트랜잭션(Saga)**으로 취소해야 함. 핵심 차별화 기술 중 하나 | 회원 탈퇴에 Saga 적용 (핵심 기술 또는 추가 핵심 기술) |
 | 5 | AI 별도 서비스 | **분리하는 게 좋음.** 다른 조도 AI 서비스를 따로 분리함 | 팀은 AI를 기능별로 나눠 policy·recommendation에 두기로 함. 검색·판정을 맡는 recommendation이 사실상 AI 중심 서비스 |
 | 6 | 버전 | **내릴 필요 없음.** 혜자 버전에 맞춰 나머지를 올려서 작업 | Boot 4.1.1 유지, Spring Cloud 2025.1.2+ (1-6) |
 | 7 | 인증 위치 | 수업 방식대로 **Gateway(진입점)에서 확인** | Gateway에서 JWT·블랙리스트·관리자 권한 확인 |
-| 8 | 공통 코드·기준 데이터 | 서비스마다 복사는 비효율. **한곳에 모아 두는 게 낫다** | 공통 모듈(`common`). 지역 데이터 방식은 다음 미팅에서 확인 |
-| 9 | 스케줄러 | 알림 서비스 하나를 만들면 됨. ERD를 보고 다시 답하기로 함 | 관심 정책과 알림을 engagement-service에 함께 둠 (**추가 답변 대기**) |
+| 8 | 공통 코드·기준 데이터 | 서비스마다 복사는 비효율. **한곳에 모아 두는 게 낫다** | 공통 모듈(`common`). 지역은 user_db 읽기 복사본으로 확정(#1) |
+| 9 | 스케줄러 | 알림 서비스 하나를 만들면 됨. 11-02 추가: 관심 정책 서비스가 스케줄러를 맡고 마감일만 사본으로 두면 됨 | engagement가 D-7 알림 스케줄러를 갖고 `policy_snapshot`의 마감일을 씀(#46, 답변과 같음) |
 | 10 | Kafka 증빙 | 로그, 테스트 코드, 시연 영상 **모두** 담으면 가장 좋음. 일부러 실패하는 메시지를 만들어 로그로 확인 | 실패 케이스를 만드는 테스트와 시연 시나리오를 미리 설계 |
-| 11 | 서비스 연동 테스트 | 아직 고민해 보지 않음. 다시 답하기로 함 | (**답변 대기**) 우선 서비스별 테스트 + Compose 통합 시연 |
+| 11 | 서비스 연동 테스트 | 11-02: 실무처럼 단위 테스트와 전체 서비스를 띄운 통합 테스트 **둘 다** 기대 | 서비스별 단위·슬라이스 테스트 + Compose로 전체를 띄운 통합 테스트, 결과를 증빙으로 남김 |
 | 12 | 프런트 | 기능 추가가 없으면 **호출 주소만 Gateway로** 바꾸면 됨 | `.env`만 변경 (1-8) |
-| 13 | 저장소 구조 | 강제 사항 없음. 다른 조와 맞추도록 기준을 정해 내일 전체 공지 | 지금은 hyeja-msa 하나(모노레포). **공지 후 맞춤** |
+| 13 | 저장소 구조 | 강제 사항 없음. 다른 조와 맞추도록 기준을 정해 내일 전체 공지 | hyeja-msa 하나(모노레포)로 진행. 공지로 해결 |
 | 14 | 배포 범위 | 클라우드·K8s는 **선택**. 필수 먼저 하고 여력이 있으면 진행. AWS 계정은 필요하면 제공 | 필수 1~10 우선, 여유 있으면 K8s → AWS |
 
 **미팅 중 추가로 나온 이야기**
@@ -187,7 +187,7 @@ MSA 구성요소는 **지원님 개인 실습 저장소**에 있습니다. 수�
 | 단계 | 시점 | 할 일 | 끝났다고 보는 기준 |
 |---|---|---|---|
 | 0. 결정 | 10/30 | 팀장·역할, 서비스 분리(4개), 동기·비동기 구간, 핵심 기술 확정 | 수행계획서 초안 |
-| 1. 설계 | 10/30~주말 | 서비스 구성도, 시스템 구성도, 서비스별 ERD, 내부 API·Kafka 이벤트 형식 정의, 요구사항 명세서·WBS. 강사님 추가 답변(3·9·11·13번) 반영 | 팀원 모두가 같은 문서를 보고 개발 가능 |
+| 1. 설계 | 10/30~주말 | 서비스 구성도, 시스템 구성도, 서비스별 ERD, 내부 API·Kafka 이벤트 형식 정의, 요구사항 명세서·WBS. 강사님 추가 답변(3·9·11번, 11-02) 반영 | 팀원 모두가 같은 문서를 보고 개발 가능 |
 | 2. 인프라 골격 | 11/02 오전 | Boot 4.1 + Spring Cloud 2025.1.2+로 Eureka·Config·Gateway 기동, 공통 모듈. `ljw2869/msa`는 구조 참고 | Eureka 화면에 서비스 등록됨 |
 | 3. 서비스 분리 | 11/02 | 담당자별로 hyeja-backend 코드를 복사해 나누기, DB 3개 분리, FK 제거, Gateway JWT 검증·관리자 권한·CORS 이전 | 각 서비스가 혼자 뜨고, Gateway를 거쳐 API가 응답함 |
 | 4. 통신 연결 | 11/03 | Feign 연결(계약 문서 기준), Kafka `policy-updated`, 프런트 `.env` 변경 후 연결 | 가입 → 조건 등록 → 목록 → 관심 등록 → 알림 흐름이 끝까지 동작 |
