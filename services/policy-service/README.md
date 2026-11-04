@@ -12,6 +12,7 @@
 | GET | `/api/policies/housing/me` | 로그인 |
 | GET | `/api/policies/{policyId}` | 없음 (로그인 시 판정·하트 포함) |
 | POST | `/api/policies/sync` | 관리자 |
+| GET | `/api/policies/admin/events` | 관리자 (policy-updated 발행 대기·발행 건수, 최근 10건) |
 | GET | `/api/policies/card-news/guest` | 없음 |
 | GET | `/api/policies/card-news` | 로그인 |
 | GET | `/api/policies/card-detail/{policyId}` | 없음 (로그인 시 하트 포함) |
