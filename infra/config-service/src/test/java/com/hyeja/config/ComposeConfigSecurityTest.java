@@ -16,9 +16,21 @@ class ComposeConfigSecurityTest {
             String prefix = "services." + app + "-service.";
             assertThat(compose.getProperty(prefix + "environment.JAVA_TOOL_OPTIONS"))
                     .isEqualTo("-Xms128m -Xmx256m");
-            assertThat(compose.getProperty(prefix + "deploy.resources.limits.memory"))
-                    .isEqualTo("384M");
         }
+        assertThat(compose.getProperty("services.discovery-service.deploy.resources.limits.memory"))
+                .isEqualTo("384M");
+        assertThat(compose.getProperty("services.config-service.deploy.resources.limits.memory"))
+                .isEqualTo("384M");
+        assertThat(compose.getProperty("services.user-service.deploy.resources.limits.memory"))
+                .isEqualTo("384M");
+        assertThat(compose.getProperty("services.recommendation-service.deploy.resources.limits.memory"))
+                .isEqualTo("384M");
+        assertThat(compose.getProperty("services.gateway-service.deploy.resources.limits.memory"))
+                .isEqualTo("512M");
+        assertThat(compose.getProperty("services.policy-service.deploy.resources.limits.memory"))
+                .isEqualTo("640M");
+        assertThat(compose.getProperty("services.engagement-service.deploy.resources.limits.memory"))
+                .isEqualTo("640M");
 
         assertThat(compose.getProperty("services.kafka.environment.KAFKA_HEAP_OPTS"))
                 .isEqualTo("-Xms256m -Xmx384m");

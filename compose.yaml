@@ -295,6 +295,11 @@ services:
       - gateway-logs:/app/logs
     ports:
       - "127.0.0.1:${GATEWAY_HOST_PORT:-8000}:8000"
+    # Netty/native buffers and Spring Cloud metadata need more headroom than the JVM heap alone.
+    deploy:
+      resources:
+        limits:
+          memory: 512M
     depends_on:
       config-service:
         condition: service_healthy
@@ -368,6 +373,11 @@ services:
     volumes:
       - ./docker/config-tls/trust:/run/config-trust:ro
       - policy-logs:/app/logs
+    # Policy synchronization and Spring Cloud components use significant off-heap memory at startup.
+    deploy:
+      resources:
+        limits:
+          memory: 640M
     depends_on: *business-dependencies
 
   engagement-service:
@@ -403,6 +413,11 @@ services:
     volumes:
       - ./docker/config-tls/trust:/run/config-trust:ro
       - engagement-logs:/app/logs
+    # Kafka consumers, Hibernate and Spring Cloud need native-memory headroom above -Xmx256m.
+    deploy:
+      resources:
+        limits:
+          memory: 640M
     depends_on: *business-dependencies
 
   recommendation-service:
