@@ -8,6 +8,48 @@ import org.springframework.core.io.FileSystemResource;
 import static org.assertj.core.api.Assertions.*;
 
 class ComposeConfigSecurityTest {
+    @Test void composeBoundsJvmHeapAndContainerMemoryForLocalStack() throws Exception {
+        var compose = new YamlPropertySourceLoader()
+                .load("compose", new FileSystemResource(Path.of("../../compose.yaml"))).get(0);
+
+        for (String app : new String[]{"discovery", "config", "gateway", "user", "policy", "engagement", "recommendation"}) {
+            String prefix = "services." + app + "-service.";
+            assertThat(compose.getProperty(prefix + "environment.JAVA_TOOL_OPTIONS"))
+                    .isEqualTo("-Xms128m -Xmx256m");
+        }
+        assertThat(compose.getProperty("services.discovery-service.deploy.resources.limits.memory"))
+                .isEqualTo("384M");
+        assertThat(compose.getProperty("services.config-service.deploy.resources.limits.memory"))
+                .isEqualTo("384M");
+        assertThat(compose.getProperty("services.user-service.deploy.resources.limits.memory"))
+                .isEqualTo("512M");
+        assertThat(compose.getProperty("services.recommendation-service.deploy.resources.limits.memory"))
+                .isEqualTo("384M");
+        assertThat(compose.getProperty("services.gateway-service.deploy.resources.limits.memory"))
+                .isEqualTo("512M");
+        assertThat(compose.getProperty("services.policy-service.deploy.resources.limits.memory"))
+                .isEqualTo("640M");
+        assertThat(compose.getProperty("services.engagement-service.deploy.resources.limits.memory"))
+                .isEqualTo("640M");
+
+        assertThat(compose.getProperty("services.kafka.environment.KAFKA_HEAP_OPTS"))
+                .isEqualTo("-Xms256m -Xmx384m");
+        assertThat(compose.getProperty("services.kafka.deploy.resources.limits.memory"))
+                .isEqualTo("768M");
+        assertThat(compose.getProperty("services.mariadb.deploy.resources.limits.memory"))
+                .isEqualTo("512M");
+        assertThat(compose.getProperty("services.redis.deploy.resources.limits.memory"))
+                .isEqualTo("${REDIS_MEMORY_LIMIT:-128M}");
+        assertThat(compose.getProperty("services.redis.command[4]"))
+                .isEqualTo("${REDIS_MAXMEMORY:-96mb}");
+        assertThat(compose.getProperty("services.redis.command[6]"))
+                .isEqualTo("${REDIS_MAXMEMORY_POLICY:-noeviction}");
+        assertThat(compose.getProperty("services.zipkin.deploy.resources.limits.memory"))
+                .isEqualTo("384M");
+        assertThat(compose.getProperty("services.prometheus.deploy.resources.limits.memory"))
+                .isEqualTo("256M");
+    }
+
     @Test void busAndHttpsClientSettingsCoexistAfterMerge() throws Exception {
         var loader = new YamlPropertySourceLoader();
         for (String module : new String[]{"../../infra/gateway-service", "../../services/user-service",
