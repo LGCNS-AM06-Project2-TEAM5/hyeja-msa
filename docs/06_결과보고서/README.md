@@ -16,4 +16,4 @@ PPT가 기본입니다. HTML로 만들면 PDF로 저장하고 PPT로도 변환�
 | API 명세 | [서비스 간 계약](../api/README.md), [engagement API](../api/engagement-api.md) |
 | 시연 흐름 | [07 기타](../07_기타/README.md)의 시연 순서 |
 
-배포 구성도에 들어갈 내용: 사용자 브라우저(프런트 5173) → EC2 한 대(서울 리전, t3.large) 안의 Docker Compose → Gateway 8000 → Eureka·Config와 서비스 4개 → MariaDB(논리 DB 3개)·Kafka·Redis, 옆에 Prometheus·Grafana·Zipkin. 이미지는 GitHub Actions가 빌드해 레지스트리에 올리고 서버는 받기만 합니다. 밖으로 연 포트는 SSH 22, Gateway 8000, Grafana 3000, Prometheus 9090이고 허용한 IP만 접속할 수 있습니다.
+배포 구성도에 들어갈 내용: 사용자 브라우저(프런트 5173) → EC2 한 대(서울 리전, t3.large) 안의 Docker Compose → Gateway 8000 → Eureka·Config와 서비스 4개 → MariaDB(논리 DB 3개)·Kafka·Redis, 옆에 Prometheus·Grafana·Zipkin. 이미지는 GitHub Actions가 빌드해 레지스트리에 올리고 서버는 받기만 합니다. 저장소의 `compose.yaml`은 모든 포트를 `127.0.0.1`에만 열고, EC2에서는 덮어쓰기 파일로 Gateway 8000, Grafana 3000, Prometheus 9090만 밖으로 엽니다. 보안 그룹은 이 3개와 SSH 22만 허용한 IP에 엽니다.
