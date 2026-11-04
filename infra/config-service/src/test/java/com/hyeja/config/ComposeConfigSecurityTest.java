@@ -48,6 +48,12 @@ class ComposeConfigSecurityTest {
                 .isEqualTo("384M");
         assertThat(compose.getProperty("services.prometheus.deploy.resources.limits.memory"))
                 .isEqualTo("256M");
+        assertThat(compose.getProperty("services.grafana.deploy.resources.limits.memory"))
+                .isEqualTo("256M");
+        assertThat(compose.getProperty("services.grafana.environment.GF_AUTH_DISABLE_LOGIN_FORM")).isEqualTo("true");
+        assertThat(compose.getProperty("services.grafana.environment.GF_AUTH_BASIC_ENABLED")).isEqualTo("false");
+        assertThat(compose.getProperty("services.grafana.environment.GF_AUTH_ANONYMOUS_ORG_ROLE")).isEqualTo("Viewer");
+        assertThat(compose.containsProperty("services.grafana.environment.GF_SECURITY_ADMIN_PASSWORD")).isFalse();
     }
 
     @Test void busAndHttpsClientSettingsCoexistAfterMerge() throws Exception {
