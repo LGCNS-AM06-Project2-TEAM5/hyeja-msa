@@ -42,7 +42,7 @@ spring:
 # 켜면 OPEN_AI_KEY·OPEN_AI_MODEL이 있어야 기동됩니다. 인증 없이는 engagement가 F3를 401로 막아 관심 표시 없이 응답합니다.
 recommendation:
   search:
-    enabled: false
+    enabled: true
 
 server:
   port: 0
