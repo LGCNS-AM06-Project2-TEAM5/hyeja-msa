@@ -5,27 +5,38 @@ import com.hyeja.engagementservice.client.policy.dto.PolicySnapshotDTO;
 import com.hyeja.engagementservice.global.apiPayload.status.ErrorStatus;
 import com.hyeja.engagementservice.global.exception.GeneralException;
 import feign.FeignException;
+import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
+import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.json.JsonMapper;
 
+// F5 호출은 engPolicySnapshot 회로를 거칩니다. 회로가 열려 호출하지 않은 경우도 다른 장애와 같이 SERVER_002로 바꾸며,
+// 기존 스냅샷으로 대신 등록하지 않습니다.
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class PolicySnapshotReader {
+    static final String CIRCUIT_BREAKER = "engPolicySnapshot";
+
     private final PolicyClient policyClient;
     private final JsonMapper jsonMapper;
+    private final CircuitBreakerRegistry circuitBreakerRegistry;
 
     public PolicySnapshotDTO getPolicy(String policyId) {
         PolicyApiResponse<PolicySnapshotDTO> response;
         try {
-            response = policyClient.getPolicy(policyId);
+            response = circuitBreakerRegistry.circuitBreaker(CIRCUIT_BREAKER)
+                    .executeSupplier(() -> policyClient.getPolicy(policyId));
         } catch (FeignException exception) {
             if (isPolicyNotFound(exception)) {
                 throw new GeneralException(ErrorStatus.POLICY_NOT_FOUND);
             }
             log.warn("F5 정책 조회 실패. policyId={}, status={}", policyId, exception.status());
+            throw unavailable();
+        } catch (CallNotPermittedException exception) {
+            log.warn("policy-service 회로가 열려 있어 F5 정책을 조회하지 않았습니다.");
             throw unavailable();
         }
         if (response == null || !Boolean.TRUE.equals(response.isSuccess())

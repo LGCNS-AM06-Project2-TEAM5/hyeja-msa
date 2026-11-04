@@ -17,6 +17,8 @@ import com.hyeja.engagementservice.policy.enums.PolicyApplyPeriod;
 import com.hyeja.engagementservice.policy.enums.PolicyCategory;
 import com.hyeja.engagementservice.policy.repository.PolicyRepository;
 import com.sun.net.httpserver.HttpServer;
+import io.github.resilience4j.circuitbreaker.CircuitBreaker;
+import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
@@ -62,6 +64,7 @@ class PolicyFavoriteIntegrationTest {
     @Autowired NotificationRepository notifications;
     @MockitoSpyBean FavoriteRepository favorites;
     @MockitoSpyBean PolicySnapshotReader snapshotReader;
+    @Autowired CircuitBreakerRegistry circuitBreakers;
 
     @DynamicPropertySource
     static void properties(DynamicPropertyRegistry registry) {
@@ -72,6 +75,8 @@ class PolicyFavoriteIntegrationTest {
 
     @BeforeEach
     void setUp() {
+        // 일부러 낸 5xx·Timeout·역직렬화 실패가 쌓여 다른 테스트에서 회로가 열리지 않게 합니다.
+        circuitBreakers.getAllCircuitBreakers().forEach(CircuitBreaker::reset);
         notifications.deleteAll();
         favorites.deleteAll();
         policies.deleteAll();
