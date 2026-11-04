@@ -24,6 +24,9 @@ ext {
 
 dependencies {
     implementation 'org.springframework.cloud:spring-cloud-starter-openfeign'
+    // F5 Feign 호출의 Circuit Breaker와 Prometheus 메트릭
+    implementation 'org.springframework.cloud:spring-cloud-starter-circuitbreaker-resilience4j'
+    implementation 'io.github.resilience4j:resilience4j-micrometer'
     implementation 'org.springframework.cloud:spring-cloud-starter-loadbalancer'
     runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
     implementation 'org.springframework.cloud:spring-cloud-starter-bus-kafka'

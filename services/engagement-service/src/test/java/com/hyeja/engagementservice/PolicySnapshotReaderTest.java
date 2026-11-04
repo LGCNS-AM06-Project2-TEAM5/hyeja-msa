@@ -14,6 +14,7 @@ import com.hyeja.engagementservice.global.exception.GeneralException;
 import com.hyeja.engagementservice.policy.enums.PolicyCategory;
 import feign.Request;
 import feign.RetryableException;
+import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 import java.net.ConnectException;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
@@ -23,7 +24,8 @@ import tools.jackson.databind.json.JsonMapper;
 
 class PolicySnapshotReaderTest {
     private final PolicyClient client = mock(PolicyClient.class);
-    private final PolicySnapshotReader reader = new PolicySnapshotReader(client, JsonMapper.builder().build());
+    private final PolicySnapshotReader reader = new PolicySnapshotReader(
+            client, JsonMapper.builder().build(), CircuitBreakerRegistry.ofDefaults());
 
     @Test
     void connectionRefusedIsUnavailableRatherThanPolicyNotFound() {
