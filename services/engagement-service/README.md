@@ -39,6 +39,27 @@
 
 `policyId, policyName, categories, supportContent, applyEndDate, applyPeriodCode, applyUrl, activeYn, deleted`
 
+## 관심 등록 F5 연동 (#90)
+
+- `FavoriteService.createFavorite`는 로컬 스냅샷이 있어도 매번 Policy의 `GET /internal/policies/{policyId}`를 호출합니다.
+- 기본 호출 대상은 Eureka의 `policy-service`입니다. 직접 주소가 필요한 환경에서는 `CLIENTS_POLICY_URL`로 지정할 수 있습니다.
+- 기본 연결 제한은 1초, 응답 제한은 2초입니다. `POLICY_CONNECT_TIMEOUT_MS`·`POLICY_READ_TIMEOUT_MS`로 변경할 수 있습니다. Feign 재시도는 기본 비활성 상태를 유지합니다.
+- 외부 호출 후 `FavoriteRegistrationService.register`의 로컬 트랜잭션에서 공통 `PolicySnapshotUpdater.upsert`와 관심 저장을 처리합니다. F5의 `deleted=false`도 로컬 삭제 표시에 반영합니다. 저장 실패·중복 등록이면 스냅샷 변경도 롤백됩니다.
+- F5의 `404 / POLICY_001`은 그대로 반환합니다. 그 외 HTTP 오류·연결 실패·시간 초과·비정상 응답은 `503 / SERVER_002`로 처리하며, 기존 스냅샷으로 대신 등록하지 않습니다.
+- 신청 기간은 추가 검사하지 않습니다. 마감·CLOSED 정책도 F5가 정상 반환하면 등록할 수 있습니다. 관심 삭제는 기존 로컬 조회 방식을 유지하며 F5를 호출하지 않습니다.
+- `/internal/**`는 외부 Gateway 경로로 노출하지 않으며 별도 `X-Internal-Token`은 붙이지 않습니다. 외부 관심 API의 Gateway 인증은 기존 방식을 유지합니다.
+- 검증: `./gradlew test bootJar --no-daemon --no-watch-fs` 성공, 최신 develop 통합 후 전체 57개 테스트 통과(신규 F5 HTTP·저장 통합 26개, Reader 2개 포함).
+- #88 공통 저장기와 #84 F3·F4 API가 머지된 develop에 통합한 작업입니다. 자동 검증은 모의 HTTP 서버를 실제 Feign으로 호출하고 H2에 저장합니다. 실제 Policy·Eureka·Gateway·MariaDB 연동은 별도 검증 대상입니다.
+
+### F5 Circuit Breaker (Issue #103 후속)
+
+- 적용 범위: `PolicySnapshotReader.getPolicy`의 `PolicyClient.getPolicy` 호출만 독립 회로 `engPolicySnapshot`(Resilience4j, `CircuitBreakerRegistry.executeSupplier`)으로 감쌉니다. Feign 전역 회로·`@CircuitBreaker`·Fallback·Retry는 쓰지 않으며, 연결 1초·응답 2초 제한은 그대로입니다.
+- 설정(`application.yml`의 `resilience4j.circuitbreaker`, policy·recommendation과 같은 값): COUNT_BASED 20회, 최소 10회, 실패율 50%, OPEN 15초, HALF_OPEN 시험 3회, OPEN→HALF_OPEN 자동 전환 끔.
+- 실패율 집계: 5xx·연결 실패·Timeout·역직렬화 실패는 실패로 셉니다. 4xx(`404 / POLICY_001`, 401, 403 등)는 `CircuitBreakerIgnorePredicate`로 제외합니다.
+- 오류 응답은 바뀌지 않습니다. `404 / POLICY_001`은 그대로, 그 밖의 4xx·5xx·연결 실패·Timeout·비정상 응답과 회로 OPEN(`CallNotPermittedException`)은 `503 / SERVER_002`입니다. 실패하면 F5 호출 뒤에 시작하는 `FavoriteRegistrationService` 트랜잭션에 들어가지 않으므로 스냅샷 갱신·관심 저장이 없고, 기존 스냅샷으로 대신 등록하지도 않습니다.
+- 관측: 상태 전환은 회로 이름만 담은 WARN 로그(`Circuit breaker state changed. name=engPolicySnapshot, ...`), 상태·호출 결과는 기존 Basic 인증 `/actuator/prometheus`의 `resilience4j_circuitbreaker_*` 메트릭으로 확인합니다. 회로가 OPEN이어도 `/actuator/health`는 UP입니다.
+- 검증: `gradlew.bat test bootJar` 성공, 전체 76개 테스트 통과(신규 `PolicySnapshotCircuitBreakerTest` 11개·`PolicySnapshotCircuitBreakerIntegrationTest` 8개, 기존 `PolicyFavoriteIntegrationTest` 26개 포함). 실제 Policy 장애 상황의 Compose 실측은 별도 검증 대상입니다.
+
 ## 바뀌는 점
 
 - favorite·notification의 member·policy FK를 지우고 ID만 저장합니다.
