@@ -16,4 +16,4 @@ PPT가 기본입니다. HTML로 만들면 PDF로 저장하고 PPT로도 변환�
 | API 명세 | [서비스 간 계약](../api/README.md), [engagement API](../api/engagement-api.md) |
 | 시연 흐름 | [07 기타](../07_기타/README.md)의 시연 순서 |
 
-배포 구성 요약: 사용자 브라우저(로컬 프런트 5173) → EC2 한 대(서울 리전, t3.large) 안의 Docker Compose → Gateway 8000 → Eureka·Config와 서비스 4개 → MariaDB(논리 DB 3개)·Kafka·Redis, 옆에 Prometheus·Grafana·Zipkin. GitHub Actions는 develop 이미지를 GHCR에 자동으로 올리고, 실제 EC2 시연은 Docker Hub `v1.0` 이미지 7개를 받아 실행했습니다(서버에서 빌드하지 않음). 저장소의 `compose.yaml`은 모든 포트를 `127.0.0.1`에만 열고, EC2에서는 덮어쓰기 파일로 Gateway 8000, Grafana 3000, Prometheus 9090만 밖으로 엽니다. 보안 그룹은 이 3개와 SSH 22만 허용한 IP에 엽니다.
+배포 구성 요약: 사용자 브라우저(로컬 프런트 5173) → EC2 한 대(서울 리전, t3.large) 안의 Docker Compose → Gateway 8000 → Eureka·Config와 서비스 4개 → MariaDB(논리 DB 3개)·Kafka·Redis, 옆에 Prometheus·Grafana·Zipkin. GitHub Actions는 develop 이미지를 GHCR에 자동으로 올리고, 실제 EC2 시연은 Docker Hub `v1.0` 이미지 7개를 받아 실행했습니다(서버에서 빌드하지 않음). 저장소의 `compose.yaml`은 모든 포트를 `127.0.0.1`에만 열고, EC2에서는 서버에만 둔 덮어쓰기 파일(저장소에 없음)로 Gateway 8000, Grafana 3000, Prometheus 9090만 밖으로 엽니다. 저장소의 `compose.deploy.yaml`·`scripts/deploy.sh`는 GHCR 이미지만 바꾸고 포트는 그대로라, 그것만으로는 외부에서 접근할 수 없습니다. 보안 그룹은 이 3개와 SSH 22만 허용한 IP에 엽니다.

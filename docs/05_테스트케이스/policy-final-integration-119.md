@@ -21,7 +21,7 @@
 - 일반 회원·관리자는 테스트 DB에 비밀번호 해시와 프로필을 미리 넣었다. 실제 회원가입·이메일 인증·관리자 자동 생성은 검증하지 않았다.
 - 로그인은 실제 `POST /api/members/login`을 Gateway 경유로 호출했다. JWT 검증, Redis 블랙리스트 조회와 Gateway→Engagement assertion 발급·검증은 실제 구현을 사용했다.
 - JWT·assertion·모니터링·DB 비밀값은 검증용으로 분리했고 문서·Git에 포함하지 않았다. 외부 API 키는 Policy 로컬 .env에서 필요한 항목만 읽어 환경변수로 전달했다.
-- Recommendation 검색 기본값은 여전히 `false`다. **검증 런타임에서만 `RECOMMENDATION_SEARCH_ENABLED=true`로 켰다.** 시연 환경에서도 담당자가 활성화 설정을 확인해야 한다.
+- 기준 커밋 `a37de90`에서 Recommendation 검색 기본값은 `false`였다. **검증 런타임에서만 `RECOMMENDATION_SEARCH_ENABLED=true`로 켰다.** (이후 PR #116이 develop의 기본값을 `true`로 바꿨다.)
 - Gateway는 Config Server 필수 import가 있어, 원본 application.yml을 복사한 검증용 외부 설정에서 그 import만 제외했다. 라우팅·JWT·CORS 규칙은 유지했다. `--spring.config.location=file:<검증용 gateway-runtime.yml>`로 실행했으며 저장소 설정은 수정하지 않았다.
 - 공통 런타임: Config client·Bus·Stream 비활성화, 서버 loopback 바인딩, Eureka URL 명시, JVM 힙 상한 384MB. Policy·User·Engagement는 실제 검증 Kafka 주소를 주입했다.
 - Policy는 검증 프로필에서 테이블 생성 후 용어 시드와 지역 CSV를 적재하도록 런타임 설정했다. 서비스 간 호출은 직접 URL 대신 Eureka 서비스 이름을 사용했다.

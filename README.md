@@ -18,7 +18,7 @@
 
 ![HYEJA MSA 시스템 아키텍처](docs/architecture/system-architecture.png)
 
-- 모든 사용자 요청은 Gateway(8000) 한 곳으로 들어오고, Gateway가 JWT를 검증한 뒤 서비스 4개로 보냅니다. 서비스는 Eureka에 이름으로 등록해 서로 찾고, 설정은 Config Server에서 HTTPS로 받습니다.
+- 모든 사용자 요청은 Gateway(8000) 한 곳으로 들어와 서비스 4개로 갑니다. 로그인·관리자 경로는 Gateway가 JWT를 검증하고, 공개 경로는 토큰 없이 통과하되 토큰을 보내면 검증합니다(잘못된 토큰은 401). 서비스는 Eureka에 이름으로 등록해 서로 찾고, 설정은 Config Server에서 HTTPS로 받습니다.
 - 서비스 간 동기 호출은 OpenFeign F1~F6이고 모두 Resilience4j 서킷 브레이커를 거칩니다. 데이터 변경 전파는 Kafka 이벤트로 합니다.
 - MariaDB 컨테이너 하나에 서비스별 논리 DB 3개를 두고, Redis는 로그아웃 블랙리스트·이메일 인증에 씁니다.
 - Prometheus가 각 서비스의 Actuator 지표를 모으고 Grafana와 프런트 관리자 화면이 이를 조회합니다. Zipkin은 요청 하나가 서비스 사이를 지나는 경로를 기록합니다.
@@ -88,7 +88,7 @@ F1~F6 모두 호출별 독립 Resilience4j 서킷 브레이커를 거칩니다. 
 
 ### 인증과 내부 보안
 
-- **Gateway:** 사용자 JWT(HS256, `JWT_SECRET`)의 서명·만료를 확인하고 Redis 로그아웃 블랙리스트를 조회합니다. 밖에서 보낸 `X-Member-Id`·`X-Member-Role`은 지우고 검증한 값으로 다시 붙입니다. user·policy·recommendation은 이 헤더를 믿고, 서비스 포트를 외부에 열지 않는 것을 전제로 합니다.
+- **Gateway:** `Authorization`이 있으면 사용자 JWT(HS256, `JWT_SECRET`)의 서명·만료를 확인하고 Redis 로그아웃 블랙리스트를 조회합니다. 토큰이 없으면 공개 경로만 통과하고 로그인 경로는 401입니다. CORS preflight는 토큰 확인 없이 처리합니다. 밖에서 보낸 `X-Member-Id`·`X-Member-Role`은 지우고 검증한 값으로 다시 붙입니다. user·policy·recommendation은 이 헤더를 믿고, 서비스 포트를 외부에 열지 않는 것을 전제로 합니다.
 - **Engagement:** Gateway가 따로 발급한 내부 JWT(`X-Gateway-Assertion`, 수명 2분)를 검증합니다. 이 키(`GATEWAY_ENGAGEMENT_SECRET`)는 사용자 JWT 키와 다른 값입니다. `X-Member-Id`만 보낸 요청은 인증되지 않습니다. [상세 계약](docs/architecture/gateway-engagement-auth.md)
 - **서비스 간 Feign 호출:** 별도 서비스 인증 토큰 없이 Compose 내부 네트워크에서만 호출합니다. 외부 차단은 Gateway가 `/internal/**`을 라우팅하지 않는 것과 서비스 포트를 열지 않는 것으로 합니다.
 - **Config Server:** HTTPS만 제공하고, 서비스마다 다른 Basic 계정으로 자기 설정만 조회할 수 있습니다. Git의 `{cipher}` 값은 Config Server만 가진 키로 복호화합니다.
@@ -144,8 +144,8 @@ hyeja-msa/
 필요한 것: Docker와 Compose v2, Docker 메모리 8GB 이상(JVM 7개와 MariaDB·Kafka·Redis·Prometheus·Grafana·Zipkin을 함께 띄웁니다. 컨테이너 메모리 상한 합계는 약 6.1GB), Config 인증서를 만들 PowerShell과 Java 17 `keytool`.
 
 ```powershell
-# 1. 환경변수: 처음 한 번 복사하고 비밀값은 팀 채널에서 받아 채웁니다 (기존 .env는 덮어쓰지 않음)
-Copy-Item .env.example .env
+# 1. 환경변수: .env가 없을 때만 복사하고 비밀값은 팀 채널에서 받아 채웁니다 (기존 .env는 유지)
+if (-not (Test-Path -LiteralPath .env)) { Copy-Item .env.example .env }
 # 2. Config Server TLS 인증서: .env의 CONFIG_TLS_KEY_STORE_PASSWORD·CONFIG_TLS_TRUST_STORE_PASSWORD와 같은 값을 입력
 powershell -ExecutionPolicy Bypass -File docker/New-ConfigTls.ps1
 # 3. 설정 확인 후 전체 실행
@@ -185,7 +185,7 @@ GHCR 자동 발행과 실제 EC2 배포는 별개의 경로입니다. GitHub Act
 
 - AWS 서울 리전(`ap-northeast-2`) EC2 t3.large, EBS 30GiB 한 대에 이 저장소를 받아 Docker Compose로 백엔드와 인프라 전체를 띄웠습니다.
 - 이미지는 Docker Hub에 올린 `v1.0` 이미지 7개를 받아 씁니다. 서버에서는 빌드하지 않습니다.
-- 기본 `compose.yaml`은 포트를 `127.0.0.1`에만 열어 두므로, 서버에서는 Gateway 8000·Grafana 3000·Prometheus 9090만 밖으로 여는 덮어쓰기 파일을 함께 씁니다.
+- 기본 `compose.yaml`은 포트를 `127.0.0.1`에만 열어 두므로, 서버에서는 Gateway 8000·Grafana 3000·Prometheus 9090만 밖으로 여는 덮어쓰기 파일을 함께 씁니다. 이 파일과 Docker Hub 이미지 지정은 EC2 서버에만 있고 저장소에는 없습니다. 저장소의 `compose.deploy.yaml`·`scripts/deploy.sh`만으로 실행하면 모든 포트가 `127.0.0.1`에만 열려 로컬 PC의 프런트가 EC2 Gateway에 붙을 수 없습니다.
 - 보안 그룹은 SSH 22와 위 3개 포트만 열고, 접속할 IP만 허용합니다. 서버 주소는 팀 채널에서 공유합니다.
 - `.env`와 Config TLS 인증서는 저장소에 넣지 않고 서버에 따로 옮깁니다. 프런트는 로컬 PC에서 실행해 EC2의 Gateway를 HTTP로 부릅니다.
 

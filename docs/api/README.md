@@ -23,7 +23,7 @@
 | 잘못된 토큰 | 공개 API라도 잘못된 JWT를 함께 보내면 401 `COMMON_002`입니다 |
 | 내부 API | 서비스끼리 Eureka 서비스 이름으로 OpenFeign 호출합니다. 별도 서비스 인증 토큰(`X-Internal-Token` 등)은 없고 내부 네트워크에서만 호출합니다. 사용자 JWT·`X-Member-Id`를 내부 API 인증 수단으로 쓰지 않습니다 |
 | Content-Type | `application/json; charset=UTF-8` |
-| 날짜·시간 | ISO-8601 문자열, 한국 시간, 시간대 오프셋 없음. 날짜 `2026-11-30`, 시간 `2026-11-04T10:53:30`(소수 초가 붙을 수 있음). "오늘"은 `Asia/Seoul` 기준 |
+| 날짜·시간 | REST 응답은 ISO-8601 문자열, 한국 시간, 시간대 오프셋 없음. 날짜 `2026-11-30`, 시간 `2026-11-04T10:53:30`(소수 초가 붙을 수 있음). "오늘"은 `Asia/Seoul` 기준. 예외: Kafka 이벤트의 `occurredAt`은 `OffsetDateTime`이라 `2026-11-03T17:30:00+09:00`처럼 오프셋을 포함합니다([9장](#9-kafka-이벤트-계약)) |
 | JSON 필드 이름 | 서비스마다 1차 응답을 그대로 따릅니다. user·recommendation과 policy 상세·카드뉴스·용어는 camelCase, policy 목록(POL-01·03)의 정책 항목과 engagement 항목은 snake_case입니다. 표에는 실제 응답 이름을 적었으며 통일하지 않습니다 |
 
 공통 응답 형식(성공은 모두 HTTP 200):
@@ -1008,7 +1008,7 @@ F5 호출이 중복 확인보다 먼저이므로, 이미 등록한 정책이라�
 | `member-registered` | user | engagement | 가입 커밋 후 | 웰컴 메일 | 하지 않음 (#1 확정, 토픽만 생성) |
 | `notification-created` | engagement | engagement 내부 Worker | 앱 알림 저장 후 | 마감 알림 메일 | 하지 않음 (토픽만 생성) |
 
-공통 필드: `eventId`(중복 처리 확인), `eventType`, `eventVersion`, `occurredAt`, `aggregateId`. 개인정보와 토큰은 넣지 않습니다. 공통 필드와 본문은 한 객체에 같이 담고 enum은 이름 그대로 보냅니다.
+공통 필드: `eventId`(중복 처리 확인), `eventType`, `eventVersion`, `occurredAt`(시간대 오프셋 포함 ISO-8601, REST의 오프셋 없는 시간 형식과 다름), `aggregateId`. 개인정보와 토큰은 넣지 않습니다. 공통 필드와 본문은 한 객체에 같이 담고 enum은 이름 그대로 보냅니다.
 
 `member-withdrawn` (key = `memberId` 문자열):
 

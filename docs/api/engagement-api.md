@@ -16,7 +16,7 @@
 | `X-Gateway-Assertion` | Gateway → engagement | Gateway가 생성한 내부 JWT. 클라이언트가 직접 설정하지 않음 |
 | `Authorization: Bearer ...` | 클라이언트 → Gateway | 기존 사용자 JWT. Gateway에서 검증 |
 
-모든 API의 회원 ID는 검증된 내부 JWT의 sub에서 principal로 전달한다. X-Member-Id 헤더는 무시한다. 모든 요청은 Body가 없다. 수동 알림 생성 API는 제공하지 않는다.
+모든 API의 회원 ID는 검증된 내부 JWT의 sub에서 principal로 전달한다. X-Member-Id 헤더는 무시한다. 외부 API(ENG-01~06)는 모두 Body가 없다. 내부 API ENG-07은 `memberId`·`policyIds` JSON Body를 받는다([계약](README.md#eng-07)). 수동 알림 생성 API는 제공하지 않는다.
 
 ## 2. 공통 응답
 
