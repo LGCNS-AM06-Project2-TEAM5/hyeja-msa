@@ -62,6 +62,8 @@
 
 시간 제한은 `application.yml`의 `spring.cloud.openfeign.client.config.default`(연결 1초, 응답 2초)입니다. 서비스 주소는 Eureka에서 찾습니다.
 
+Circuit Breaker (Issue #103): F4는 `policyEngagementFavorites`, F6는 `policyUserProfile` 독립 회로(Resilience4j, `application.yml`의 `resilience4j.circuitbreaker`)를 거칩니다. 최근 20회 중 10회 이상 기록되고 절반 이상 실패(5xx·연결 실패·Timeout·역직렬화 실패)하면 15초 동안 호출하지 않고, 이후 3회 시험 호출로 닫거나 다시 엽니다. 4xx(`MEMBER_001`·`PROFILE_001` 포함)는 실패율에서 뺍니다. 회로가 열려 호출하지 않을 때도 F6는 503 `SERVER_002`(부르는 쪽의 기존 대체 응답 그대로), F4는 하트 없이 응답합니다. Retry는 두지 않습니다. 상태·호출 결과는 `/actuator/prometheus`의 `resilience4j_circuitbreaker_*` 메트릭과 상태 전환 WARN 로그로 확인합니다.
+
 ## 로컬 개발 실행
 
 - `application.yml`: 서비스 이름, Config Server 연결, 랜덤 포트 등 공통 설정.

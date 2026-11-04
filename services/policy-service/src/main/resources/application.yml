@@ -38,6 +38,27 @@ spring:
             connect-timeout: 1000
             read-timeout: 2000
 
+# F4·F6 Feign 호출마다 독립 회로를 둡니다(FavoriteReader·MemberProfileReader).
+# 최근 20회 중 10회 이상 기록되고 절반 이상 실패하면 15초간 호출을 막고, 다음 호출부터 3회 시험해 닫거나 다시 엽니다.
+# 4xx(MEMBER_001·PROFILE_001 포함)는 실패율에서 뺍니다. Timeout은 위 openfeign 설정을 그대로 쓰고 Retry는 두지 않습니다.
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 20
+        minimum-number-of-calls: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 15s
+        permitted-number-of-calls-in-half-open-state: 3
+        automatic-transition-from-open-to-half-open-enabled: false
+        ignore-exception-predicate: com.hyeja.policyservice.client.CircuitBreakerIgnorePredicate
+    instances:
+      policyEngagementFavorites:
+        base-config: default
+      policyUserProfile:
+        base-config: default
+
 server:
   # 실행 시 사용 가능한 랜덤 포트 자동 할당
   port: 0
