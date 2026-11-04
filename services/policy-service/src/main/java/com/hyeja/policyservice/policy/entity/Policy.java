@@ -86,7 +86,7 @@ public class Policy extends BaseEntity {
     @Column(name = "houseless_yn", nullable = false, length = 20)
     private PolicyHouselessRequirement houselessRequirement;
 
-    @Column(name = "housing_type", length = 20)
+    @Column(name = "housing_type", length = 50)
     private String housingType;
 
     @Enumerated(EnumType.STRING)

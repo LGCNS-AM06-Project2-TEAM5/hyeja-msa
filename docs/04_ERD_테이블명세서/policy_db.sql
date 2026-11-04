@@ -30,7 +30,7 @@ CREATE TABLE `policy` (
   `marriage_code`            VARCHAR(20)   NULL      COMMENT '혼인 조건',  -- API mrgSttsCd 변환: 55001 MARRIED(기혼), 55002 SINGLE(미혼), 55003 NO_RESTRICTION(제한없음)
   `employment_codes`         VARCHAR(200)  NULL      COMMENT '취업 조건',  -- API jobCd 13001~13010 변환 10종(재직자·자영업자·미취업자·프리랜서·일용근로자·(예비)창업자·단기근로자·영농종사자·기타·제한없음), 쉼표로 여러 개
   `houseless_yn`             VARCHAR(20)   NOT NULL  COMMENT '무주택 조건',  -- AI 판정: REQUIRED(무주택 필수), NOT_REQUIRED(무관하다고 명시), UNKNOWN(정보 없음)
-  `housing_type`             VARCHAR(20)   NULL      COMMENT '주거 유형(원문)',  -- API mclsfNm 원문 (api_sub_category와 같은 값, 읽는 코드 없음). 길이가 20으로 api_sub_category(50)보다 짧습니다.
+  `housing_type`             VARCHAR(50)   NULL      COMMENT '주거 유형(원문)',  -- API mclsfNm 원문 (api_sub_category와 같은 값, 읽는 코드 없음). 1차는 20이라 긴 중분류가 저장되지 않아 api_sub_category와 같은 50으로 늘렸습니다.
   `apply_period_code`        VARCHAR(20)   NOT NULL  COMMENT '신청 기간 구분',  -- API aplyPrdSeCd 변환: 57001 SPECIFIC_PERIOD(특정기간), 57002 ALWAYS(상시), 57003 CLOSED(마감). 코드가 없거나 모르는 값이면 그 정책은 저장하지 않습니다.
   `extra_qualification`      TEXT          NULL      COMMENT '추가 자격',  -- API addAplyQlfcCndCn + ptcpPrpTrgtCn(참여 대상)을 줄바꿈으로 연결, 두 값이 같으면 하나만
   `apply_start_date`         DATE          NULL      COMMENT '신청 시작일',  -- SPECIFIC_PERIOD일 때만 API aplyYmd의 첫 날짜
