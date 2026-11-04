@@ -22,9 +22,9 @@ erDiagram
         varchar_255 categories
         text support_content
         date apply_end_date
-        varchar_255 apply_period_code
+        enum apply_period_code "SPECIFIC_PERIOD, ALWAYS, CLOSED"
         varchar_500 apply_url
-        boolean active_yn
+        bit_1 active_yn
         datetime created_at
         datetime updated_at
         datetime deleted_at
@@ -43,7 +43,7 @@ erDiagram
         bigint notification_id PK
         bigint member_id "user-service 논리 참조"
         varchar_100 policy_id FK
-        boolean read_yn
+        bit_1 read_yn
         date deadline_date
         datetime created_at
         datetime updated_at
@@ -81,7 +81,7 @@ erDiagram
     dlt_alert_state {
         varchar_200 dlt_topic PK
         int failure_count
-        boolean notification_pending
+        bit_1 notification_pending
         varchar_200 latest_event_key
         longtext latest_payload
         datetime updated_at

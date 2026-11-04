@@ -10,9 +10,9 @@ CREATE TABLE `policy_snapshot` (
   `categories`               VARCHAR(255)  NULL     COMMENT '정책 카테고리 집합', -- PolicyCategoryConverter가 문자열로 변환
   `support_content`          TEXT          NULL     COMMENT '지원 내용',
   `apply_end_date`           DATE          NULL     COMMENT '신청 마감일',
-  `apply_period_code`        VARCHAR(255)  NULL     COMMENT '신청 기간 구분', -- PolicyApplyPeriod enum 이름
+  `apply_period_code`        ENUM('SPECIFIC_PERIOD', 'ALWAYS', 'CLOSED') NULL COMMENT '신청 기간 구분', -- PolicyApplyPeriod enum 이름
   `apply_url`                VARCHAR(500)  NULL     COMMENT '신청 URL',
-  `active_yn`                BOOLEAN       NULL     COMMENT '활성 여부',
+  `active_yn`                BIT(1)        NULL     COMMENT '활성 여부',
   `created_at`               DATETIME(6)   NOT NULL COMMENT '생성 시각',
   `updated_at`               DATETIME(6)   NOT NULL COMMENT '수정 시각',
   `deleted_at`               DATETIME(6)   NULL     COMMENT '삭제 시각',
@@ -37,7 +37,7 @@ CREATE TABLE `notification` (
   `notification_id`          BIGINT        NOT NULL AUTO_INCREMENT COMMENT '알림 ID',
   `member_id`                BIGINT        NOT NULL COMMENT '회원 ID', -- user-service 논리 참조, 물리 FK 없음
   `policy_id`                VARCHAR(100)  NOT NULL COMMENT '정책 ID',
-  `read_yn`                  BOOLEAN       NOT NULL COMMENT '읽음 여부',
+  `read_yn`                  BIT(1)        NOT NULL COMMENT '읽음 여부',
   `deadline_date`            DATE          NOT NULL COMMENT '알림 기준 마감일',
   `created_at`               DATETIME(6)   NOT NULL COMMENT '생성 시각',
   `updated_at`               DATETIME(6)   NOT NULL COMMENT '수정 시각',
@@ -86,7 +86,7 @@ CREATE TABLE `failed_member_event` (
 CREATE TABLE `dlt_alert_state` (
   `dlt_topic`                VARCHAR(200)  NOT NULL COMMENT 'DLT 토픽명',
   `failure_count`            INT           NOT NULL COMMENT '알림 이후 누적 실패 건수',
-  `notification_pending`     BOOLEAN       NOT NULL COMMENT '관리자 알림 대기 여부',
+  `notification_pending`     BIT(1)        NOT NULL COMMENT '관리자 알림 대기 여부',
   `latest_event_key`         VARCHAR(200)  NULL     COMMENT '최근 실패 이벤트 키',
   `latest_payload`           LONGTEXT      NULL     COMMENT '최근 실패 이벤트 본문',
   `updated_at`               DATETIME(6)   NOT NULL COMMENT '상태 수정 시각',

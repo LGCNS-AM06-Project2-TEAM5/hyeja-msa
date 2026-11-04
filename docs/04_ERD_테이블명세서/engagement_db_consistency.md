@@ -37,11 +37,11 @@
 
 - Java `Long`/`long` 식별값과 오프셋은 `BIGINT`, `Integer`/`int`는 `INT`로 반영했습니다.
 - `LocalDate`는 `DATE`, `LocalDateTime`은 마이크로초 정밀도의 `DATETIME(6)`으로 명세했습니다.
-- `Boolean`/`boolean`은 MariaDB `BOOLEAN`으로 표기했습니다. MariaDB에서는 `TINYINT(1)`의 동의어로 처리됩니다.
+- `Boolean`/`boolean`은 Hibernate 7.4.5 MariaDB 방언의 신규 스키마 생성 타입에 맞춰 `BIT(1)`로 반영했습니다.
 - `@Lob String`인 `payload`, `latest_payload`는 MariaDB 문자열 LOB인 `LONGTEXT`로 명세했습니다.
 - `@Column(nullable = false)` 및 원시 타입 필드는 `NOT NULL`, 그 외 선택 값은 `NULL`로 반영했습니다.
 - `Policy.categories`는 `PolicyCategoryConverter`가 단일 문자열 컬럼으로 변환하므로 관계 테이블 없이 `VARCHAR(255)`로 반영했습니다.
-- `Policy.applyPeriodCode`는 `EnumType.STRING`의 기본 길이를 따라 `VARCHAR(255)`로 반영했습니다.
+- `Policy.applyPeriodCode`는 Hibernate 7.4.5 MariaDB 방언의 `EnumType.STRING` 생성 타입에 맞춰 `ENUM('SPECIFIC_PERIOD', 'ALWAYS', 'CLOSED')`로 반영했습니다.
 
 ## 경계와 운영상 주의점
 
