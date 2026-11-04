@@ -91,7 +91,14 @@ services:
   redis:
     image: redis:7.4-alpine
     restart: unless-stopped
-    command: ["redis-server", "--appendonly", "yes"]
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+      - --maxmemory
+      - ${REDIS_MAXMEMORY:-96mb}
+      - --maxmemory-policy
+      - ${REDIS_MAXMEMORY_POLICY:-noeviction}
     ports:
       - "127.0.0.1:${REDIS_HOST_PORT:-16379}:6379"
     volumes:
@@ -99,7 +106,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 128M
+          memory: ${REDIS_MEMORY_LIMIT:-128M}
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s

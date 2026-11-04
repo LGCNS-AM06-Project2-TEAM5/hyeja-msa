@@ -27,7 +27,11 @@ class ComposeConfigSecurityTest {
         assertThat(compose.getProperty("services.mariadb.deploy.resources.limits.memory"))
                 .isEqualTo("512M");
         assertThat(compose.getProperty("services.redis.deploy.resources.limits.memory"))
-                .isEqualTo("128M");
+                .isEqualTo("${REDIS_MEMORY_LIMIT:-128M}");
+        assertThat(compose.getProperty("services.redis.command[4]"))
+                .isEqualTo("${REDIS_MAXMEMORY:-96mb}");
+        assertThat(compose.getProperty("services.redis.command[6]"))
+                .isEqualTo("${REDIS_MAXMEMORY_POLICY:-noeviction}");
         assertThat(compose.getProperty("services.zipkin.deploy.resources.limits.memory"))
                 .isEqualTo("384M");
         assertThat(compose.getProperty("services.prometheus.deploy.resources.limits.memory"))
