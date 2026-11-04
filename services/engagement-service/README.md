@@ -1,6 +1,6 @@
 # engagement-service
 
-담당: 손수연 · 포트 8083 · DB `engagement_db` (favorite, notification, 정책 스냅샷 읽기 모델)
+담당: 이지원, 손수연 · 포트 8083 · DB `engagement_db` (favorite, notification, 정책 스냅샷 읽기 모델)
 
 관심 정책(♡) 등록·해제·목록(키워드 검색·페이징), 관심 여부 일괄 조회, 마감 D-7 앱 알림 생성·조회·읽음·삭제, (여유 있을 때) 마감 알림 메일 발송을 맡습니다.
 
