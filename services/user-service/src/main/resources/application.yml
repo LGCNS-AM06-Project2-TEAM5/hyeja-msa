@@ -30,6 +30,11 @@ server:
 jwt:
   secret: ${JWT_SECRET}
 
+# 값이 모두 있을 때만 기동 시 공용 관리자 계정을 생성합니다.
+admin:
+  email: ${ADMIN_EMAIL:}
+  password: ${ADMIN_PASSWORD:}
+
 ---
 # Local defaults; Docker environment variables override infrastructure addresses.
 logging:
