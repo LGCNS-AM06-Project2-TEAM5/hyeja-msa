@@ -8,6 +8,32 @@ import org.springframework.core.io.FileSystemResource;
 import static org.assertj.core.api.Assertions.*;
 
 class ComposeConfigSecurityTest {
+    @Test void composeBoundsJvmHeapAndContainerMemoryForLocalStack() throws Exception {
+        var compose = new YamlPropertySourceLoader()
+                .load("compose", new FileSystemResource(Path.of("../../compose.yaml"))).get(0);
+
+        for (String app : new String[]{"discovery", "config", "gateway", "user", "policy", "engagement", "recommendation"}) {
+            String prefix = "services." + app + "-service.";
+            assertThat(compose.getProperty(prefix + "environment.JAVA_TOOL_OPTIONS"))
+                    .isEqualTo("-Xms128m -Xmx256m");
+            assertThat(compose.getProperty(prefix + "deploy.resources.limits.memory"))
+                    .isEqualTo("384M");
+        }
+
+        assertThat(compose.getProperty("services.kafka.environment.KAFKA_HEAP_OPTS"))
+                .isEqualTo("-Xms256m -Xmx384m");
+        assertThat(compose.getProperty("services.kafka.deploy.resources.limits.memory"))
+                .isEqualTo("768M");
+        assertThat(compose.getProperty("services.mariadb.deploy.resources.limits.memory"))
+                .isEqualTo("512M");
+        assertThat(compose.getProperty("services.redis.deploy.resources.limits.memory"))
+                .isEqualTo("128M");
+        assertThat(compose.getProperty("services.zipkin.deploy.resources.limits.memory"))
+                .isEqualTo("384M");
+        assertThat(compose.getProperty("services.prometheus.deploy.resources.limits.memory"))
+                .isEqualTo("256M");
+    }
+
     @Test void busAndHttpsClientSettingsCoexistAfterMerge() throws Exception {
         var loader = new YamlPropertySourceLoader();
         for (String module : new String[]{"../../infra/gateway-service", "../../services/user-service",

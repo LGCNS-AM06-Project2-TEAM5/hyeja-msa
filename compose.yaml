@@ -19,7 +19,8 @@ x-app-environment: &app-environment
   KAFKA_BOOTSTRAP_SERVERS: kafka:9092
   SPRING_KAFKA_LISTENER_OBSERVATION_ENABLED: "true"
   SPRING_KAFKA_TEMPLATE_OBSERVATION_ENABLED: "true"
-  JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=60.0"
+  # Keep each Spring JVM predictable when the full stack runs in Docker Desktop.
+  JAVA_TOOL_OPTIONS: "-Xms128m -Xmx256m"
 
 x-config-client-environment: &config-client-environment
   <<: *app-environment
@@ -39,6 +40,10 @@ x-business-environment: &business-environment
 x-app: &app
   restart: unless-stopped
   init: true
+  deploy:
+    resources:
+      limits:
+        memory: 384M
   healthcheck:
     test: ["CMD-SHELL", "curl --fail --silent http://localhost:$${SERVER_PORT}/actuator/health > /dev/null"]
     interval: 10s
@@ -72,6 +77,10 @@ services:
     volumes:
       - mariadb-data:/var/lib/mysql
       - ./docker/mariadb/01-create-databases.sh:/docker-entrypoint-initdb.d/01-create-databases.sh:ro
+    deploy:
+      resources:
+        limits:
+          memory: 512M
     healthcheck:
       test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
       interval: 5s
@@ -87,6 +96,10 @@ services:
       - "127.0.0.1:${REDIS_HOST_PORT:-16379}:6379"
     volumes:
       - redis-data:/data
+    deploy:
+      resources:
+        limits:
+          memory: 128M
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -114,9 +127,13 @@ services:
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: "0"
       KAFKA_LOG_DIRS: /var/lib/kafka/data
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
-      KAFKA_HEAP_OPTS: "-Xms256m -Xmx512m"
+      KAFKA_HEAP_OPTS: "-Xms256m -Xmx384m"
     volumes:
       - kafka-data:/var/lib/kafka/data
+    deploy:
+      resources:
+        limits:
+          memory: 768M
     healthcheck:
       test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --list > /dev/null"]
       interval: 10s
@@ -131,6 +148,12 @@ services:
       kafka:
         condition: service_healthy
     entrypoint: ["/bin/bash", "-ec"]
+    environment:
+      KAFKA_HEAP_OPTS: "-Xms128m -Xmx192m"
+    deploy:
+      resources:
+        limits:
+          memory: 256M
     command:
       - |
         for topic in member-registered policy-updated policy-updated-dlt notification-created member-withdrawn member-withdrawn-dlt hyeja-config-bus; do
@@ -142,6 +165,12 @@ services:
     restart: unless-stopped
     ports:
       - "127.0.0.1:${ZIPKIN_HOST_PORT:-9411}:9411"
+    environment:
+      JAVA_OPTS: "-Xms64m -Xmx256m"
+    deploy:
+      resources:
+        limits:
+          memory: 384M
 
   prometheus:
     image: prom/prometheus:v3.13.3
@@ -156,6 +185,10 @@ services:
       - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ./docker/prometheus/recording-rules.yml:/etc/prometheus/recording-rules.yml:ro
       - prometheus-data:/prometheus
+    deploy:
+      resources:
+        limits:
+          memory: 256M
     secrets:
       - monitoring_password
     depends_on:
