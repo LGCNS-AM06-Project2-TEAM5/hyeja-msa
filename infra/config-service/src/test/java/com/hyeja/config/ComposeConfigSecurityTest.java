@@ -24,11 +24,11 @@ class ComposeConfigSecurityTest {
         assertThat(compose.getProperty("services.user-service.deploy.resources.limits.memory"))
                 .isEqualTo("512M");
         assertThat(compose.getProperty("services.recommendation-service.deploy.resources.limits.memory"))
-                .isEqualTo("384M");
+                .isEqualTo("512M");
         assertThat(compose.getProperty("services.gateway-service.deploy.resources.limits.memory"))
                 .isEqualTo("512M");
         assertThat(compose.getProperty("services.policy-service.deploy.resources.limits.memory"))
-                .isEqualTo("640M");
+                .isEqualTo("768M");
         assertThat(compose.getProperty("services.engagement-service.deploy.resources.limits.memory"))
                 .isEqualTo("640M");
 

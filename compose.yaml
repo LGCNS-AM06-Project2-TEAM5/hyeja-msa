@@ -410,7 +410,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 640M
+          memory: 768M
     depends_on: *business-dependencies
 
   engagement-service:
@@ -469,6 +469,11 @@ services:
     volumes:
       - ./docker/config-tls/trust:/run/config-trust:ro
       - recommendation-logs:/app/logs
+    # 영상 시나리오(가입·검색·관심 5회)에서 384M의 89%까지 올라가 512M로 둡니다.
+    deploy:
+      resources:
+        limits:
+          memory: 512M
     depends_on: *business-dependencies
 
 secrets:
