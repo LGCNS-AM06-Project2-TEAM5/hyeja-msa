@@ -2,7 +2,7 @@
 
 담당: 이지원, 손수연 · 포트 8083 · DB `engagement_db` (favorite, notification, 정책 스냅샷 읽기 모델)
 
-관심 정책(♡) 등록·해제·목록(키워드 검색·페이징), 관심 여부 일괄 조회, 마감 D-7 앱 알림 생성·조회·읽음·삭제, (여유 있을 때) 마감 알림 메일 발송을 맡습니다.
+관심 정책(♡) 등록·해제·목록(키워드 검색·페이징), 관심 여부 일괄 조회, 마감 D-7 앱 알림 생성·조회·읽음·삭제, 정책 변경·회원 탈퇴 이벤트 구독, 탈퇴 이벤트 DLT 관리자 메일을 맡습니다. 마감 알림 메일 발송은 구현하지 않았습니다.
 
 인증은 Gateway의 사용자 JWT 검증 후 전달되는 내부 JWT를 검증하는 방식입니다. Gateway와 동일한 별도 대칭키 `GATEWAY_ENGAGEMENT_SECRET`(최소 32 UTF-8 바이트)을 환경변수로 주입해야 합니다. `X-Member-Id`만 보낸 요청은 인증되지 않습니다. [내부 인증 설계](../../docs/architecture/gateway-engagement-auth.md)
 
@@ -30,8 +30,22 @@
 | 제공 → policy, recommendation | Feign | 회원의 관심 정책 ID 일괄 조회 |
 | 사용 → policy | Feign | 관심 등록 시 정책 존재·스냅샷 확인 |
 | 구독 | Kafka `policy-updated` | 정책 스냅샷 읽기 모델 갱신. `PolicyUpdatedListener`가 받아 `PolicySnapshotUpdater`로 반영하고, 같은 `eventId`는 한 번만 반영, 실패 시 3번 재시도 후 `policy-updated-dlt`. Kafka 주소가 있는 환경(Compose)에서만 켜짐 |
-| 발행·구독 | Kafka `notification-created` | 내부 Worker가 마감 알림 메일 발송 (여유 있을 때, #1 확정) |
-| 구독 | Kafka `member-withdrawn` | 탈퇴 회원의 관심 정책·알림 정리. `eventId`로 중복 무시, 실패 시 재시도 후 DLT (#1 확정) |
+| 구독 | Kafka `member-withdrawn` | 탈퇴 회원의 관심 정책·알림 정리. `eventId`를 `processed_member_event`에 남겨 중복 무시(#110), 실패 시 1초 간격 3번 재시도 후 `member-withdrawn-dlt` (#1 확정) |
+| 구독 | Kafka `member-withdrawn-dlt` | DLT 메시지를 `failed_member_event`에 저장하고 누적 건수가 임계값에 닿으면 관리자 메일 발송(아래) |
+| (미구현) | Kafka `notification-created` | 마감 알림 메일 Worker는 구현하지 않았습니다. 토픽만 Compose가 만듭니다 |
+
+## DLT 관리자 메일 (#107)
+
+1. `MemberWithdrawnDltListener`가 `member-withdrawn-dlt` 메시지를 `failed_member_event`에 저장합니다. 같은 topic·partition·offset은 한 번만 저장·집계합니다.
+2. `DltNotificationService`가 토픽별 누적 건수를 `dlt_alert_state`에 기록합니다.
+3. 누적이 `ADMIN_DLT_THRESHOLD`(기본 3)에 닿으면 `ADMIN_ALERT_EMAIL`로 메일을 보내고, 성공하면 누적을 0으로 되돌립니다.
+4. 발송에 실패하면 `ADMIN_DLT_RETRY_INTERVAL_MS`(기본 60000)마다 다시 보냅니다. `ADMIN_ALERT_EMAIL`이 비어 있으면 보내지 않습니다.
+
+SMTP는 `MAIL_HOST`(기본 smtp.gmail.com)·`MAIL_PORT`(기본 587)·`MAIL_USERNAME`·`MAIL_PASSWORD`로 설정합니다. Compose health check는 mail health indicator를 꺼서 외부 SMTP 상태와 무관합니다. `policy-updated-dlt`는 메일 대상이 아니고 아래 지표로만 셉니다.
+
+## Kafka 처리 지표 (#111)
+
+`/actuator/prometheus`에 `hyeja_policy_updated_events_total{result="applied"|"duplicate"}`(스냅샷 반영·중복 무시)와 `hyeja_policy_updated_dlt_total`(DLT 전송 성공 수)을 노출합니다. 서비스 시작 이후 누적값입니다.
 
 ## 정책 스냅샷 읽기 모델
 

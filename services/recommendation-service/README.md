@@ -14,7 +14,7 @@
 
 회원 ID는 Gateway가 JWT를 검증한 뒤 넣는 `X-Member-Id` 헤더로 받습니다(없으면 401 `COMMON_002`).
 
-**현재 상태:** 검색 코어·AI 분석은 옮겼고, F1(user 회원 조건, `GET /internal/members/{memberId}/profile`)은 `UserProfileFeignClient`·`ProfileClientAdapter`·`UserServiceErrorDecoder`(404 `MEMBER_001`·`PROFILE_001` 그대로 전달), F2(policy 정책 후보, `POST /internal/policies/candidates`)는 `PolicyCandidateFeignClient`·`PolicyClientAdapter`, F3(engagement 관심 여부, `POST /internal/favorites/active-policy-ids`)는 `FavoriteFeignClient`·`FavoriteClientAdapter`로 구현했습니다. 서비스 간 인증 계약이 반영되기 전이라 `recommendation.search.enabled=false`(기본값)로 검색 API를 등록하지 않습니다. 켜려면 `OPEN_AI_KEY`·`OPEN_AI_MODEL`이 필요합니다. engagement는 인증 없는 요청을 401로 막으므로, 인증 헤더 반영 전에는 F3가 실패해 관심 표시 없이(`isFavorite=false`) 응답합니다.
+**현재 상태:** 검색 코어·AI 분석은 옮겼고, F1(user 회원 조건, `GET /internal/members/{memberId}/profile`)은 `UserProfileFeignClient`·`ProfileClientAdapter`·`UserServiceErrorDecoder`(404 `MEMBER_001`·`PROFILE_001` 그대로 전달), F2(policy 정책 후보, `POST /internal/policies/candidates`)는 `PolicyCandidateFeignClient`·`PolicyClientAdapter`, F3(engagement 관심 여부, `POST /internal/favorites/active-policy-ids`)는 `FavoriteFeignClient`·`FavoriteClientAdapter`로 구현했습니다. 검색 API는 `recommendation.search.enabled: true`(`application.yml` 기본값, PR #116)로 켜져 있고, 실행에는 `OPEN_AI_KEY`·`OPEN_AI_MODEL`이 필요합니다. engagement `SecurityConfig`가 `/internal/**`을 Gateway assertion 없이 허용하므로(PR #95) F3는 별도 인증 헤더 없이 호출하며, 실패하면 관심 표시 없이(`isFavorite=false`) 응답합니다. Gateway·프런트·실제 OpenAI를 거친 검색은 [Policy 최종 통합 검증](../../docs/05_테스트케이스/policy-final-integration-119.md)에서 확인했습니다. 그 검증의 기준 커밋 `a37de90`은 PR #116 병합 전이라 기본값이 `false`였고, 검증 런타임에서만 `RECOMMENDATION_SEARCH_ENABLED=true`로 켰습니다.
 
 **Circuit Breaker (Issue #103):** F1·F2·F3 Feign 호출은 각각 독립 회로 `recUserProfile`·`recPolicyCandidates`·`recEngagementFavorites`(Resilience4j, `application.yml`의 `resilience4j.circuitbreaker`)를 거칩니다. 최근 20회 중 10회 이상 기록되고 절반 이상 실패(5xx·연결 실패·Timeout·역직렬화 실패)하면 15초 동안 호출하지 않고, 이후 3회 시험 호출로 닫거나 다시 엽니다. 4xx와 `MEMBER_001`·`PROFILE_001`은 실패율에서 뺍니다. 회로가 열려 호출하지 않을 때도 기존과 같이 F1·F2는 검색 실패(500 `SERVER_001`), F3는 관심 표시 없이 응답합니다. Feign Timeout은 그대로이고 Retry는 두지 않습니다. 상태·호출 결과는 `/actuator/prometheus`의 `resilience4j_circuitbreaker_*` 메트릭과 상태 전환 WARN 로그로 확인합니다.
 
@@ -28,7 +28,7 @@
 | 방향 | 방식 | 내용 |
 |---|---|---|
 | 사용 → user | Feign | 내 조건 조회 |
-| 사용 → policy | Feign | 정책 후보 일괄 조회 (지금 코드는 PolicyRepository.searchActivePolicies 직접 호출) |
+| 사용 → policy | Feign | 정책 후보 일괄 조회 (F2 `POST /internal/policies/candidates`) |
 | 사용 → engagement | Feign | 관심 여부 일괄 조회 |
-| 공유 코드 | 자격 판정 | 판정 코드(PolicyEligibilityEvaluator 등)를 policy의 정책 상세와 같이 씁니다. 판정 규칙의 기준은 recommendation이 갖습니다 (#1 확정) |
+| 같은 코드 | 자격 판정 | 판정 코드(PolicyEligibilityEvaluator 등)를 policy에도 같은 내용으로 따로 둡니다(공유 모듈 아님). 판정 규칙의 기준은 recommendation이 갖습니다 (#1 확정) |
 | 외부 | OpenAI | 의도 분류·판정 이유. 실패 시 기존 기본 동작 유지 (Circuit Breaker 대체 응답) |

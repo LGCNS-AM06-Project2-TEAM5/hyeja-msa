@@ -7,8 +7,8 @@ Compose v2 이상, 이미지/Gradle 의존성/GitHub 접근이 가능한 네트�
 
 ## 환경변수
 
-루트 `.env`가 없을 때만 `.env.example`을 복사합니다. 기존 `.env`는 덮어쓰지 않습니다.
-`docker/.env.example`을 참고해 다음 필수 값을 루트 `.env`에 추가하세요.
+루트 `.env`가 없을 때만 루트 `.env.example`을 복사합니다. 기존 `.env`는 덮어쓰지 않습니다.
+다음 필수 값을 루트 `.env`에 채우세요. 빠지면 `docker compose config --quiet`가 오류로 알려 줍니다.
 
 | 변수 | 용도 |
 |---|---|
@@ -21,13 +21,17 @@ Compose v2 이상, 이미지/Gradle 의존성/GitHub 접근이 가능한 네트�
 | `CONFIG_GATEWAY_PASSWORD` 등 5개 서비스 비밀번호 | 서비스별 Config 조회 계정. 각 값은 서로 다르게 16자 이상·72 UTF-8 바이트 이하 |
 | `CONFIG_ADMIN_PASSWORD` | 암·복호화 관리자 비밀번호. 읽기 비밀번호와 다른 값, 16자 이상·72 UTF-8 바이트 이하 |
 | `GATEWAY_ENGAGEMENT_SECRET` | Gateway·engagement 전용 내부 JWT 키. JWT_SECRET과 다른 무작위 값, 최소 32 UTF-8 바이트 |
+| `CONFIG_TLS_KEY_STORE_PASSWORD`, `CONFIG_TLS_TRUST_STORE_PASSWORD` | Config TLS 저장소 비밀번호. 인증서 생성 도구 기준 12자 이상 |
+| `MONITORING_PASSWORD` | Prometheus가 `/actuator/prometheus`를 읽는 `monitoring` 계정 비밀번호. 16자 이상 별도 값 |
 
 비밀번호는 서로 다르게 설정합니다. 실제 비밀값은 커밋하지 않습니다.
 Config Server는 HTTPS만 제공하고 서비스별 Basic 계정으로 자기 JSON 설정만 조회할 수 있습니다. 먼저 `docker/New-ConfigTls.ps1`로 개발 인증서를 생성하고 .env에 CONFIG_TLS_KEY_STORE_PASSWORD/CONFIG_TLS_TRUST_STORE_PASSWORD를 설정합니다. 인증서 검증은 끄지 않습니다. Compose는 서비스별 읽기 자격증명과 공개 CA truststore만 각 클라이언트에 전달하고, 마스터 키와 관리자 비밀번호·서버 개인키는 Config Server에만 전달합니다. 암호화·복호화와 설정 이관 방법은 [Config Server 문서](../infra/config-service/README.md)를 참고하세요. 클라이언트 초기 접속 비밀번호는 Config Git이 아닌 환경변수로 관리합니다.
 Compose는 필요한 변수만 서비스에 명시적으로 전달합니다. 전체 `.env`를 주입하지 않아
 기존 `SERVER_PORT=8080`, `DB_NAME=hyeja`, `DB_USERNAME=root`, `REDIS_HOST=localhost`가
-컨테이너 설정을 덮어쓰지 않습니다. 관리자 계정은 주입하지 않습니다.
+컨테이너 설정을 덮어쓰지 않습니다.
 외부 API/메일 키는 필요한 비즈니스 서비스에만 전달합니다.
+`ADMIN_EMAIL`·`ADMIN_PASSWORD`는 user-service에만 전달하며, 둘 다 있으면 기동 때 관리자 계정을 한 번 만듭니다(선택).
+`ADMIN_ALERT_EMAIL`·`ADMIN_DLT_THRESHOLD`(기본 3)·`ADMIN_DLT_RETRY_INTERVAL_MS`(기본 60000)는 engagement-service에만 전달하며, `member-withdrawn-dlt` 누적 시 관리자 메일에 씁니다(선택).
 
 user-service는 docker 프로필에서 `application-dev.yml`을 읽지 않으므로 Compose가 SMTP host·port 및 인증/TLS 설정을 전달합니다. `MAIL_HOST` 기본값은 smtp.gmail.com, `MAIL_PORT` 기본값은 587입니다. 실제 인증 메일 발송에는 `MAIL_USERNAME`·`MAIL_PASSWORD`가 필요합니다. 로컬 Compose의 health check는 외부 SMTP의 가용성·자격증명에 의존하지 않도록 mail health indicator를 끕니다. 메일 발송 자체를 끄거나 발송 실패를 성공으로 처리하지는 않습니다.
 
@@ -74,8 +78,9 @@ powershell -File docker/Test-Compose.ps1 -InfrastructureOnly
 
 - MariaDB는 볼륨 최초 생성 시 DB 3개와 전용 계정만 만듭니다. 테이블/업무 데이터는 만들지 않습니다.
 - 각 계정은 자기 DB에만 권한이 있습니다. Recommendation은 DB가 없습니다.
-- Kafka는 단일 노드 KRaft이며 `member-registered`, `policy-updated`, `notification-created`
-  토픽을 생성합니다. 기존 토픽은 유지합니다. 개발용 단일 복제본 구성입니다.
+- Kafka는 단일 노드 KRaft이며 `kafka-init`이 `policy-updated`, `policy-updated-dlt`, `member-withdrawn`,
+  `member-withdrawn-dlt`, `hyeja-config-bus`와 미사용 토픽 `member-registered`, `notification-created`를 생성합니다.
+  기존 토픽은 유지합니다. 개발용 단일 복제본 구성입니다.
 - Discovery가 준비되면 Config를 실행하고, Config/DB/Redis/Kafka 준비 후 서비스들을 실행합니다.
 - `SPRING_CONFIG_IMPORT`와 `CONFIG_SERVER_URL`을 함께 지정합니다. 파일에 선언된
   import도 처리될 수 있어 환경변수 한 개로 덮어썼다고 가정하지 않습니다.
@@ -85,10 +90,9 @@ powershell -File docker/Test-Compose.ps1 -InfrastructureOnly
 - 7개 애플리케이션에 Boot 4 Zipkin starter와 수집 주소/100% 샘플링을 설정했습니다.
   Zipkin은 개발용 메모리 저장소로 재시작 시 트레이스가 사라질 수 있습니다.
 
-현재 비즈니스 서비스는 `/health-check` 골격입니다. DB/Kafka 접속 환경은 제공하지만,
-서비스 코드에 JDBC/JPA, Redis, Kafka 의존성이나 실제 처리가 없는 경우 해당 연결이
-자동 구현되지는 않습니다. 담당자가 기능 추가 시 전달된 설정을 사용하면 됩니다.
-DB 계정 및 Kafka 송수신은 아래 스모크 테스트로 별도 검증합니다.
+비즈니스 서비스 4개는 업무 API, DB, Kafka 발행·구독이 구현되어 있습니다. `/health-check`는
+Gateway 경유 라우팅 확인용입니다. 아래 스모크 테스트는 기반 연결과 라우팅만 확인하며 업무 기능 검증은
+[05 테스트케이스](../docs/05_테스트케이스/README.md)에 있습니다.
 
 ## Gateway 전체 응답 확인
 
@@ -166,4 +170,4 @@ docker compose down
 
 Compose 구문/애플리케이션 빌드와 실제 컨테이너 실행은 별도입니다.
 `docker compose up --wait`와 `Test-Compose.ps1`이 모두 성공한 뒤 이슈 #8의
-전체 기동/연결 완료 조건을 체크하세요. 업무 API 정상 응답은 각 기능 구현 후 추가 검증합니다.
+전체 기동/연결 완료 조건을 체크하세요. 업무 API 검증 결과는 [05 테스트케이스](../docs/05_테스트케이스/README.md)에 있습니다.
