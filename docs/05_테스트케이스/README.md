@@ -6,3 +6,4 @@
 - [Policy 실제 환경 검증 — Issue #73](policy-live-verification-73.md): 실제 API·AI·MariaDB 소량 수집 및 재수집, 조회·F2/F5 검증 결과.
 
 - [Engagement–Policy F5 실제 연동 검증 — Issue #112](f5-live-verification-112.md): 실제 Eureka·Policy·Engagement·MariaDB로 관심 등록·오류·장애·복구 확인.
+- [Policy 주요 기능 최종 통합 검증 — Issue #119](policy-final-integration-119.md): 실제 Gateway·프런트·OpenAI·F1~F6 사용자 흐름과 Kafka 반영·중복·DLT 확인(Config/Compose 제외).
