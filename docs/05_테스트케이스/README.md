@@ -7,3 +7,4 @@
 
 - [Engagement–Policy F5 실제 연동 검증 — Issue #112](f5-live-verification-112.md): 실제 Eureka·Policy·Engagement·MariaDB로 관심 등록·오류·장애·복구 확인.
 - [Policy 주요 기능 최종 통합 검증 — Issue #119](policy-final-integration-119.md): 실제 Gateway·프런트·OpenAI·F1~F6 사용자 흐름과 Kafka 반영·중복·DLT 확인(Config/Compose 제외).
+- [User 실제 환경 기능 검증 — Issue #127](user-live-verification-127.md): Compose 전체 실행으로 가입·로그인·내 조건·보안·탈퇴 이벤트 확인, F1·F6는 내부 호출과 빈 응답만 확인(정책 0건, 결과 내용 미검증).
